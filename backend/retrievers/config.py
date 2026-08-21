@@ -53,6 +53,19 @@ MAX_OUTPUT_TOKENS_SCORING = 512
 SECONDS_BETWEEN_CALLS = 15  # rate-limit spacing, tune down if your quota allows
 MAX_RETRIES = 3
 
+# --- Contradiction detection -------------------------------------------------
+# WHAT: how far apart two reported_value scores (same benchmark, different
+# papers) need to be before they count as disagreeing, and how far before
+# that disagreement is "High" severity vs "Medium".
+# WHY these numbers: benchmark scores routinely vary by 1-3 points between
+# runs/seeds/prompt formats even for the "same" underlying result (see
+# GSM8K 91.2% vs 91.0% in the test fixtures - that's noise, not conflict).
+# A gap past ~5 points on a standardized benchmark is hard to explain as
+# noise and starts to look like a real methodological or reporting
+# disagreement between papers.
+CONTRADICTION_AGREE_MAX_DIFF = 3.0
+CONTRADICTION_HIGH_SEVERITY_DIFF = 5.0
+
 # --- Mock mode ---------------------------------------------------------------
 # WHEN this matters: if GEMINI_API_KEY isn't set (e.g. you're testing pipeline
 # logic without burning API quota, or Anthropic's sandbox has no network

@@ -99,12 +99,12 @@ def get_test_papers_stub():
 # so a broken live call fails loudly instead of silently testing against
 # stub data and giving you false confidence.
 USE_LIVE_RETRIEVAL = True
-LIVE_QUERY = "GSM8K math reasoning language model accuracy improvement"
+LIVE_QUERY ="MMLU large language model benchmark evaluation results"
 
 def run_pipeline():
     session = get_session()
     papers = (
-        get_papers_from_retrieval(LIVE_QUERY, max_results=1)
+        get_papers_from_retrieval(LIVE_QUERY, max_results=8)
         if USE_LIVE_RETRIEVAL
         else get_test_papers_stub()
     )

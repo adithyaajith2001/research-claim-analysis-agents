@@ -69,11 +69,20 @@ For each such claim, return an object with these exact fields:
 - "claim_type": one of ["performance_claim", "finding", "conclusion"]
 - "benchmark_name": which benchmark from the list above this claim is about
 - "reported_value": the numeric score reported, as a plain number (e.g. 86.4). Use null if no number is stated.
+- "value_type": what KIND of number reported_value is. One of:
+  - "absolute_accuracy": a standalone score/accuracy on the benchmark (e.g. "achieves 86.4% on MMLU")
+  - "absolute_improvement": a percentage-point gain over a baseline (e.g. "a 1.3% absolute improvement")
+  - "relative_improvement": a relative/proportional gain over a baseline (e.g. "+28.4% relative accuracy improvement")
+  Use null only if reported_value is also null.
 
 STRICT RULES:
 - If a sentence does not name one of the listed benchmarks, DO NOT extract it.
 - If you cannot find the exact benchmark name in the text, do not guess - skip it.
 - Ignore boilerplate (acknowledgments, funding, generic background/motivation).
+- CRITICAL: absolute_accuracy, absolute_improvement, and relative_improvement are NOT
+  interchangeable numbers. A claim like "improves accuracy from 22.0% to 60.7%" reports
+  an absolute_accuracy value (60.7, the final score), NOT the 38.7-point gain, unless the
+  sentence itself frames the number as the improvement/delta rather than the resulting score.
 - Return ONLY a JSON array of these objects. No preamble, no markdown fences.
 
 TEXT:
@@ -107,6 +116,14 @@ def _validate_claim(c: dict) -> bool:
         return False
     if c.get("benchmark_name") and c["benchmark_name"] not in VALIDATED_BENCHMARKS:
         return False
+    # WHY: a reported_value with no value_type is exactly the ambiguity that
+    # let contradiction_agent.py compare absolute accuracy against
+    # improvement deltas as if they were the same quantity - reject rather
+    # than let an untyped number reach the DB.
+    if c.get("reported_value") is not None and not c.get("value_type"):
+        return False
+    if c.get("value_type") not in (None, "absolute_accuracy", "absolute_improvement", "relative_improvement"):
+        return False
     return True
 
 
@@ -123,13 +140,17 @@ def _normalize_for_dedup(claim_text: str) -> str:
 
 
 def _dedupe_claims(claims: list) -> list:
-    """Keeps the first occurrence of each (benchmark_name, reported_value,
-    normalized claim text) combination."""
+    """Keeps the first occurrence of each (benchmark_name, value_type,
+    reported_value, normalized claim text) combination.
+    WHY value_type is in the key: an absolute_accuracy of 60.7 and a
+    relative_improvement of 60.7 are different facts that happen to share a
+    number - they must not collapse into one deduped claim."""
     seen = set()
     deduped = []
     for c in claims:
         key = (
             c.get("benchmark_name"),
+            c.get("value_type"),
             c.get("reported_value"),
             _normalize_for_dedup(c["claim"]),
         )
@@ -167,6 +188,9 @@ def _mock_llm_response(chunk: str) -> str:
                     "claim_type": "performance_claim",
                     "benchmark_name": bench,
                     "reported_value": float(m.group(1)),
+                    # mock only ever synthesizes "X% on BENCH" style sentences,
+                    # which are always a standalone score, never a delta.
+                    "value_type": "absolute_accuracy",
                 })
     return json.dumps(results)
 

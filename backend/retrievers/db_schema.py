@@ -84,6 +84,15 @@ class Claim(Base):
     section = Column(String)  # where in the paper this came from
     benchmark_name = Column(String, nullable=True)  # domain-specific: e.g. "MMLU"
     reported_value = Column(Float, nullable=True)  # domain-specific: e.g. 86.4 (%)
+    # WHAT: what KIND of number reported_value is - "absolute_accuracy" /
+    # "absolute_improvement" / "relative_improvement". WHY this exists:
+    # contradiction_agent.py originally compared reported_value across ANY
+    # two claims sharing a benchmark_name, which meant a standalone accuracy
+    # score (e.g. 95.22%) was being numerically diffed against improvement
+    # deltas (e.g. 1.3%) as if they were the same measurement - they are not.
+    # Added so contradiction detection can group by (benchmark_name,
+    # value_type) and only compare genuinely like-for-like numbers.
+    value_type = Column(String, nullable=True)
     evidence_strength_score = Column(Float, nullable=True)  # ERD: Evidence Strength Score
     paper = relationship("Paper", back_populates="claims")
     evidence = relationship("Evidence", back_populates="claim")
@@ -169,6 +178,7 @@ def insert_claim_with_evidence(session, claim_dict: dict) -> Claim:
         section=claim_dict.get("section"),
         benchmark_name=claim_dict.get("benchmark_name"),
         reported_value=claim_dict.get("reported_value"),
+        value_type=claim_dict.get("value_type"),
     )
     session.add(claim_row)
     session.flush()  # populates claim_row.id without a full commit
@@ -190,3 +200,37 @@ def update_claim_score(session, claim_id: int, evidence_strength_score: float):
 
 def get_all_claims_for_paper(session, paper_id: str):
     return session.query(Claim).filter(Claim.paper_id == paper_id).all()
+
+
+def contradiction_exists(session, claim_a_id: int, claim_b_id: int) -> bool:
+    """WHAT: checks whether this claim pair is already stored, in EITHER
+    order (a,b) or (b,a).
+    WHY: contradiction_agent.py can be rerun any time claims change; without
+    this check, every rerun would duplicate every pair already found."""
+    return session.query(Contradiction).filter(
+        ((Contradiction.claim_a_id == claim_a_id) & (Contradiction.claim_b_id == claim_b_id)) |
+        ((Contradiction.claim_a_id == claim_b_id) & (Contradiction.claim_b_id == claim_a_id))
+    ).first() is not None
+
+
+def insert_contradiction(session, claim_a_id: int, claim_b_id: int,
+                          relation_type: str, severity: str = None):
+    """WHAT: inserts one Contradiction row, unless this pair already exists.
+    WHEN: called by contradiction_agent.py once per compared claim pair.
+    Returns the new Contradiction row, or None if it was already stored
+    (skip, don't duplicate)."""
+    if contradiction_exists(session, claim_a_id, claim_b_id):
+        return None
+    row = Contradiction(
+        claim_a_id=claim_a_id,
+        claim_b_id=claim_b_id,
+        relation_type=relation_type,
+        severity=severity,
+    )
+    session.add(row)
+    session.commit()
+    return row
+
+
+def get_all_contradictions(session):
+    return session.query(Contradiction).all()
