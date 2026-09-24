@@ -1,0 +1,78 @@
+/*
+  Design tokens for ResearchClaimAI.
+
+  Concept: an academic "reading room" - the calm, high-trust feel of a
+  university library reading desk, not a SaaS admin panel. Ink navy for
+  structure, warm paper for the working surface, a single amber accent
+  reserved for the thing that matters most (the confidence score / the
+  primary action). Source Serif for anything that reads like a research
+  finding (paper titles, claims); Inter for interface chrome and data.
+*/
+
+@import url("https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap");
+
+:root {
+  --ink: #16213b;
+  --ink-soft: #2c3a5c;
+  --paper: #faf7f0;
+  --paper-raised: #ffffff;
+  --slate: #5b6472;
+  --charcoal: #1f2430;
+  --amber: #c97a2b;
+  --amber-soft: #f1dcc0;
+  --sage: #4c7a62;
+  --sage-soft: #dcebe2;
+  --clay: #b5484d;
+  --clay-soft: #f3dcdd;
+  --rule: #ddd6c7;
+
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  color: var(--charcoal);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

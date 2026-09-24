@@ -1157,7 +1157,7 @@ def _context_has_quantitative_benchmark_signal(context_text):
 
     has_number = bool(
         re.search(
-            r"(?<![\w.-])\d+(?:\.\d+)?(?:\s*%)?(?![\w.-])",
+            r"(?<![\w.-])\d+(?:\.\d+)?(?:\s*%)?(?![\w-])(?!\.\d)",
             text
         )
     )
@@ -1216,7 +1216,7 @@ def _numeric_value_appears_in_source(
         r"(?<![\w.-])"
         r"-?\d+(?:\.\d+)?"
         r"(?:\s*%)?"
-        r"(?![\w.-])"
+        r"(?![\w-])(?!\.\d)"
     )
 
     for match in pattern.finditer(
@@ -1319,6 +1319,17 @@ def _extract_result_numbers(
     """
     Extract standalone performance-like numbers while ignoring numbers
     embedded inside model identifiers such as Qwen2.5-3B-Instruct.
+
+    BUGFIX: the trailing boundary used to be `(?![\\w.-])`, which also
+    rejected a number followed by an ordinary sentence-ending period -
+    e.g. "...achieves 35.1." - because it couldn't tell that "." apart
+    from a mid-decimal dot. Since almost every claim sentence Gemini
+    generates ends in a period immediately after the number, this
+    silently dropped the reported value for the majority of otherwise-
+    valid claims (they'd fail "exactly one reported value in claim
+    text" with 0 numbers found, not 1). Now a trailing "." only blocks
+    the match when it's followed by another digit (a genuine mid-decimal
+    continuation); a sentence-ending period is allowed through.
     """
 
     if not claim_text:
@@ -1328,7 +1339,7 @@ def _extract_result_numbers(
         r"(?<![\w.-])"
         r"-?\d+(?:\.\d+)?"
         r"(?:\s*%)?"
-        r"(?![\w.-])"
+        r"(?![\w-])(?!\.\d)"
     )
 
     values = []
@@ -1646,7 +1657,7 @@ def _extract_table_header_and_row(
                 continue
 
             prefix = re.split(
-                r"(?<![\w.-])\d+(?:\.\d+)?(?:\s*%)?(?![\w.-])",
+                r"(?<![\w.-])\d+(?:\.\d+)?(?:\s*%)?(?![\w-])(?!\.\d)",
                 row_line,
                 maxsplit=1,
             )[0].strip()
@@ -1712,7 +1723,7 @@ def _numeric_values_from_cell(
         r"(?<![\w.-])"
         r"-?\d+(?:\.\d+)?"
         r"(?:\s*%)?"
-        r"(?![\w.-])"
+        r"(?![\w-])(?!\.\d)"
     )
 
     values = []
@@ -2308,6 +2319,28 @@ def _coerce_reported_value(value):
     return numeric if math.isfinite(numeric) else None
 
 
+# Synonyms Gemini has been observed returning for claim_type instead of
+# the three canonical labels _validate_claim() accepts
+# ({"performance_claim", "finding", "conclusion"}). Keyed by the
+# lowercased, underscore-normalized form of the raw value.
+CLAIM_TYPE_ALIASES = {
+    "benchmark_performance": "performance_claim",
+    "benchmark_result": "performance_claim",
+    "performance_result": "performance_claim",
+    "performance": "performance_claim",
+    "result": "performance_claim",
+    "results": "performance_claim",
+    "score": "performance_claim",
+    "evaluation": "performance_claim",
+    "evaluation_result": "performance_claim",
+    "findings": "finding",
+    "key_finding": "finding",
+    "observation": "finding",
+    "conclusions": "conclusion",
+    "summary": "conclusion",
+}
+
+
 def _normalize_gemini_claim_schema(claim):
     """
     Normalize small schema variations produced by the focused recovery call.
@@ -2363,8 +2396,28 @@ def _normalize_gemini_claim_schema(claim):
     if not normalized.get("section"):
         normalized["section"] = "Unknown"
 
-    if not normalized.get("claim_type"):
+    # BUGFIX: this used to only fill claim_type in when it was MISSING.
+    # The recovery prompt regularly returns a non-empty but non-canonical
+    # label instead (observed: "benchmark_performance" for every recovered
+    # claim - see e.g. Llama-1/2 MMLU/TruthfulQA table rows). Because that
+    # value wasn't falsy, it skipped this default and sailed straight into
+    # _validate_claim's allow-list of exactly
+    # {"performance_claim", "finding", "conclusion"}, so every otherwise-
+    # valid recovered claim was silently rejected as "invalid". Map known
+    # synonyms onto the canonical label instead of only patching blanks.
+    claim_type = normalized.get("claim_type")
+
+    if not claim_type:
         normalized["claim_type"] = "performance_claim"
+    else:
+        claim_type_key = (
+            str(claim_type).strip().lower().replace(" ", "_").replace("-", "_")
+        )
+
+        if claim_type_key not in {"performance_claim", "finding", "conclusion"}:
+            normalized["claim_type"] = CLAIM_TYPE_ALIASES.get(
+                claim_type_key, "performance_claim"
+            )
 
     if not normalized.get("value_type"):
         metric_text = " ".join(

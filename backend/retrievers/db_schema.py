@@ -27,13 +27,25 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 import datetime
+import os
 
 # --- Connection ---------------------------------------------------------
 # LOCAL (today, laptop): SQLite file.
 # LATER (deployment, per your NFRs): swap this one line for e.g.
 #   "postgresql://user:password@host:5432/claims_audit"
 # Nothing else in this file changes.
-DATABASE_URL = "sqlite:///claims_audit.db"
+#
+# WHY ABSOLUTE PATH: this file used to point at a CWD-relative
+# "sqlite:///claims_audit.db". That silently created a DIFFERENT database
+# file depending on whether you launched a script from backend/retrievers/
+# or from the repo root (e.g. `uvicorn backend.main:app` vs
+# `python test_pipeline.py`) - the API and the pipeline script would end up
+# reading/writing two different databases without any error. Anchoring the
+# path to this file's own location makes DATABASE_URL the same no matter
+# where the process is started from.
+_DB_DIR = os.path.dirname(os.path.abspath(__file__))
+_DB_PATH = os.path.join(_DB_DIR, "claims_audit.db")
+DATABASE_URL = "sqlite:///" + _DB_PATH.replace("\\", "/")
 
 Base = declarative_base()
 

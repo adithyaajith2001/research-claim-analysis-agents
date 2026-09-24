@@ -76,16 +76,16 @@ else:
         )
 
     from google import genai
-from google.genai import types
+    from google.genai import types
 
-client = genai.Client(
-    api_key=api_key,
-    http_options=types.HttpOptions(
-        client_args={
-            "verify": False
-        }
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(
+            client_args={
+                "verify": False
+            }
+        )
     )
-)
 
 
 # ============================================================

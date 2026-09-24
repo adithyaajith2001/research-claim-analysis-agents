@@ -1,0 +1,24 @@
+# Backend dependencies for ResearchClaimAI
+# Install with: pip install -r backend/requirements.txt
+
+# API
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+
+# Database (SQLite for local dev; swap DATABASE_URL in db_schema.py for
+# PostgreSQL in deployment, per the SRS's Non-Functional Requirements)
+sqlalchemy==2.0.35
+
+# Config / secrets
+python-dotenv==1.0.1
+
+# LLM provider (claim extraction + evidence strength scoring agents)
+google-genai==0.3.0
+
+# Evidence verification agent (TF-IDF similarity)
+scikit-learn==1.5.2
+
+# Paper retrieval (arXiv / Semantic Scholar / CrossRef) + PDF processing
+requests==2.32.3
+PyPDF2==3.0.1
