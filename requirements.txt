@@ -1,0 +1,19 @@
+# Core pipeline
+sqlalchemy>=2.0
+python-dotenv>=1.0
+requests>=2.31
+
+# Gemini SDK (claim extraction, evidence scoring)
+google-genai>=1.0
+
+# Evidence Verification Agent (TF-IDF)
+scikit-learn>=1.4
+
+# API layer (main.py / any FastAPI app)
+fastapi>=0.110
+pydantic>=2.0
+uvicorn>=0.29
+
+# PDF text extraction (pdf_processor_v2.py) - optional today, needed if
+# full-text extraction is ever wired into retrieval_adapter.py
+PyPDF2>=3.0
