@@ -45,7 +45,7 @@ WHAT GETS DROPPED, AND WHY:
 import re
 from typing import Dict, List, Optional, Union
 from datetime import datetime
-#from pdf_processor_v2 import PDFProcessor
+from pdf_processor_v2 import PDFProcessor
 
 try:
     from paper_schema import StandardPaper
@@ -199,11 +199,35 @@ def normalize_and_dedupe(raw_papers: List[Dict]) -> List[Dict]:
     return result
 
 
-def get_pipeline_ready_papers(query: str, max_results: int = 10) -> List[Dict]:
-    from unified_retriever import UnifiedPaperRetriever  # local import so this
-    # module still imports fine even before her files/network are available
+def get_pipeline_ready_papers(
+    query: str,
+    max_results: int = 10,
+    fetch_full_text: bool = True,
+    max_pdf_downloads: int = 8,
+) -> List[Dict]:
+    from unified_retriever import UnifiedPaperRetriever
     retriever = UnifiedPaperRetriever()
     raw_papers = retriever.search_all_sources(query, max_results=max_results)
+
+    if fetch_full_text:
+        processor = PDFProcessor(verify_ssl=True, max_pages=6)
+        pdf_budget = max_pdf_downloads
+        for raw in raw_papers:
+            if pdf_budget <= 0:
+                break
+            has_abstract = bool(getattr(raw, "abstract", None) or
+                                 (isinstance(raw, dict) and raw.get("abstract")))
+            get_pdf_url = getattr(raw, "get_pdf_url", None)
+            pdf_url = get_pdf_url() if callable(get_pdf_url) else None
+            if has_abstract or not pdf_url:
+                continue
+            try:
+                processor.process_paper(raw)
+                pdf_budget -= 1
+            except Exception as e:
+                title = getattr(raw, "title", "") or ""
+                print(f"[warn] PDF extraction failed for '{title[:50]}': {e}")
+
     return normalize_and_dedupe(raw_papers)
 
 

@@ -286,7 +286,7 @@ def get_test_papers_stub():
 USE_LIVE_RETRIEVAL = True
 
 LIVE_QUERY = (
-    "MMLU large language model benchmark evaluation results"
+    "Llama 3 herd of models"
 )
 
 # ============================================================
@@ -1438,7 +1438,7 @@ if __name__ == "__main__":
         run_evidence_verification_regression_test()
         raise SystemExit(0)
 
-    result = run_pipeline()
+    result = run_pipeline(max_results=15)
 
     print()
     print("=" * 70)
