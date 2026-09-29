@@ -32,7 +32,8 @@ DOMAIN_NAME = "LLM/NLP Benchmark Evaluation"
 # contradiction detection meaningful - two papers need to be talking about the
 # same yardstick (e.g. both reporting GSM8K accuracy) to be comparable at all.
 VALIDATED_BENCHMARKS = [
-    "MMLU", "GSM8K", "HumanEval", "HellaSwag", "TruthfulQA", "BIG-Bench",
+    "MMLU", "MMLU-Pro", "GSM8K", "HumanEval", "HellaSwag",
+    "TruthfulQA", "BIG-Bench", "BBH",
 ]
 
 # Used to build arXiv search queries later (Adithya's retrieval agent will
@@ -51,6 +52,14 @@ MODEL_NAME = "gemini-flash-lite-latest"
 MAX_OUTPUT_TOKENS_EXTRACTION = 4096
 MAX_OUTPUT_TOKENS_SCORING = 512
 SECONDS_BETWEEN_CALLS = 15  # rate-limit spacing, tune down if your quota allows
+SECONDS_BETWEEN_SCORING_CALLS = 5  # spacing between each claim's scoring calls
+                                     # (verification + skeptic + strength).
+                                     # Separate from SECONDS_BETWEEN_CALLS because
+                                     # a rich paper can produce 15+ claims, and
+                                     # each claim triggers 3 scoring calls -
+                                     # that alone can exceed the free-tier
+                                     # 15-requests-per-minute limit even with
+                                     # extraction spacing already in place.
 MAX_RETRIES = 3
 
 # --- Contradiction detection -------------------------------------------------
@@ -65,6 +74,7 @@ MAX_RETRIES = 3
 # disagreement between papers.
 CONTRADICTION_AGREE_MAX_DIFF = 3.0
 CONTRADICTION_HIGH_SEVERITY_DIFF = 5.0
+EXTRACTION_MAX_CLAIMS_PER_CONTEXT = 20
 
 # --- Mock mode ---------------------------------------------------------------
 # WHEN this matters: if GEMINI_API_KEY isn't set (e.g. you're testing pipeline
