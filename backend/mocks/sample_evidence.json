@@ -2,37 +2,91 @@
   {
     "id": 1,
     "claim_id": 1,
-    "citation_text": "Our model achieves 86.4% on MMLU, substantially outperforming prior open-weight baselines.",
-    "reliability_score": null
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: MMLU | Llama -1 7B: 35.1",
+    "reliability_score": 0.25
   },
   {
     "id": 2,
     "claim_id": 2,
-    "citation_text": "On GSM8K, the model solves 91.2% of problems correctly.",
-    "reliability_score": null
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: MMLU | Llama -1 13B: 46.9",
+    "reliability_score": 0.25
   },
   {
     "id": 3,
     "claim_id": 3,
-    "citation_text": "We further confirm our model achieves 86.4% on MMLU in the detailed results table, consistent with the abstract.",
-    "reliability_score": null
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: MMLU | Llama -1 65B: 63.4",
+    "reliability_score": 0.25
   },
   {
     "id": 4,
     "claim_id": 4,
-    "citation_text": "On HumanEval, the model scores 67.0% pass@1 averaged over 5 seeds.",
-    "reliability_score": null
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: MMLU | Llama -2 7B: 45.3",
+    "reliability_score": 0.25
   },
   {
     "id": 5,
     "claim_id": 5,
-    "citation_text": "We find the model from prior work achieves only 79.5% on MMLU under our stricter evaluation protocol, notably lower than originally reported.",
-    "reliability_score": null
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: MMLU | Llama -2 13B: 54.8",
+    "reliability_score": 0.25
   },
   {
     "id": 6,
     "claim_id": 6,
-    "citation_text": "On GSM8K we measure 91.0% accuracy, consistent with prior claims.",
-    "reliability_score": null
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: MMLU | Llama -2 70B: 68.9",
+    "reliability_score": 0.25
+  },
+  {
+    "id": 7,
+    "claim_id": 7,
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: TruthfulQA | Llama -1 7B: 27.42",
+    "reliability_score": 0.28
+  },
+  {
+    "id": 8,
+    "claim_id": 8,
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: TruthfulQA | Llama -1 13B: 41.74",
+    "reliability_score": 0.28
+  },
+  {
+    "id": 9,
+    "claim_id": 9,
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: TruthfulQA | Llama -1 65B: 48.71",
+    "reliability_score": 0.28
+  },
+  {
+    "id": 10,
+    "claim_id": 10,
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: TruthfulQA | Llama -2 7B: 33.29",
+    "reliability_score": 0.28
+  },
+  {
+    "id": 11,
+    "claim_id": 11,
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: TruthfulQA | Llama -2 13B: 41.86",
+    "reliability_score": 0.28
+  },
+  {
+    "id": 12,
+    "claim_id": 12,
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: TruthfulQA | Llama -2 70B: 50.18",
+    "reliability_score": 0.28
+  },
+  {
+    "id": 13,
+    "claim_id": 13,
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: TruthfulQA | Llama -2-Chat 7B: 57.04",
+    "reliability_score": 0.3
+  },
+  {
+    "id": 14,
+    "claim_id": 14,
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: TruthfulQA | Llama -2-Chat 13B: 62.18",
+    "reliability_score": 0.3
+  },
+  {
+    "id": 15,
+    "claim_id": 15,
+    "citation_text": "Table. 3. Llama Based Model Evaluation | Benchmark: TruthfulQA | Llama -2-Chat 70B: 64.14",
+    "reliability_score": 0.3
   }
 ]
