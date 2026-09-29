@@ -1027,10 +1027,35 @@ def run_pipeline(
                     }
                 ]
 
+                # BUGFIX: pass the already-extracted, already-validated
+                # structured fields through instead of making
+                # EvidenceVerificationAgent re-derive model/benchmark/value
+                # from the claim sentence's free-text wording via regex.
+                # That regex only recognized present-tense phrasing like
+                # "X achieves Y on Z"; real claims regularly come back as
+                # "X achieved a Y score of Z", which silently failed every
+                # extraction and scored every live claim ~0.25/10
+                # "unrelated" no matter how good the evidence was.
+                reported_value = claim.get("reported_value")
+                claim_value = None
+                if reported_value not in (None, ""):
+                    try:
+                        claim_value = float(reported_value)
+                    except (TypeError, ValueError):
+                        claim_value = None
+
                 verification_result = (
                     evidence_verification_agent.verify_evidence(
                         claim=claim["claim"],
-                        evidence_list=evidence_list
+                        evidence_list=evidence_list,
+                        claim_model=claim.get("model_name"),
+                        claim_benchmark=claim.get("benchmark_name"),
+                        claim_value=claim_value,
+                        claim_is_percent=(
+                            claim.get("value_type") == "percentage"
+                        ),
+                        claim_setting=claim.get("evaluation_setting"),
+                        claim_metric=claim.get("metric"),
                     )
                 )
 

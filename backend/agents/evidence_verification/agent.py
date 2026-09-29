@@ -271,12 +271,48 @@ class EvidenceVerificationAgent:
         claim: str,
         evidence: str,
         similarity: float,
+        claim_model: Optional[str] = None,
+        claim_benchmark: Optional[str] = None,
+        claim_value: Optional[float] = None,
+        claim_is_percent: Optional[bool] = None,
+        claim_setting: Optional[str] = None,
+        claim_metric: Optional[str] = None,
     ) -> Dict:
-        claim_model = self._extract_claim_model(claim)
-        claim_benchmark = self._extract_claim_benchmark(claim)
-        claim_value_info = self._extract_claim_value(claim)
-        claim_setting = self._extract_claim_setting(claim)
-        claim_metric = self._extract_claim_metric(claim)
+        """
+        BUGFIX: this used to ALWAYS re-derive the model/benchmark/value from
+        the claim's free-text sentence via regex (_extract_claim_model etc),
+        even though claim_extraction_agent.py already extracted and
+        strictly validated exactly these fields (benchmark_name,
+        reported_value, model_name) when it built the claim in the first
+        place. Those regexes only recognize a handful of present-tense verb
+        phrasings ("X achieves Y on Z"); real Gemini output regularly comes
+        back as "X achieved a Y score of Z" (past tense, "an X score of Y"
+        instead of "on X") and every one of these functions silently
+        returned None, so live claims were scored 0.25-0.3/10 "unrelated"
+        regardless of how good the evidence actually was.
+        Now: if the caller already knows these values (the normal case,
+        via verify_evidence's new keyword args), use them directly and skip
+        regex parsing entirely. Only fall back to regex-extracting from the
+        claim sentence when the caller doesn't have structured data - e.g.
+        the regression tests below, which intentionally exercise the
+        free-text parsing path.
+        """
+        if claim_model is None:
+            claim_model = self._extract_claim_model(claim)
+
+        if claim_benchmark is None:
+            claim_benchmark = self._extract_claim_benchmark(claim)
+
+        if claim_value is not None:
+            claim_value_info = (claim_value, bool(claim_is_percent))
+        else:
+            claim_value_info = self._extract_claim_value(claim)
+
+        if claim_setting is None:
+            claim_setting = self._extract_claim_setting(claim)
+
+        if claim_metric is None:
+            claim_metric = self._extract_claim_metric(claim)
 
         evidence_normalized = self._normalize_text(evidence)
         model_match = bool(
@@ -385,7 +421,23 @@ class EvidenceVerificationAgent:
         self,
         claim: str,
         evidence_list: List[Dict],
+        claim_model: Optional[str] = None,
+        claim_benchmark: Optional[str] = None,
+        claim_value: Optional[float] = None,
+        claim_is_percent: Optional[bool] = None,
+        claim_setting: Optional[str] = None,
+        claim_metric: Optional[str] = None,
     ) -> Dict:
+        """
+        claim_model / claim_benchmark / claim_value / claim_is_percent /
+        claim_setting / claim_metric are OPTIONAL. Pass them in whenever
+        you already have them (e.g. straight from the claim dict that
+        claim_extraction_agent.py produced: model_name, benchmark_name,
+        reported_value, value_type == "percentage", evaluation_setting,
+        metric) - this is strictly more reliable than making this agent
+        re-guess them from the claim sentence's wording. If omitted, this
+        falls back to the old regex-based extraction from `claim`.
+        """
         results = []
 
         for evidence in evidence_list:
@@ -408,6 +460,12 @@ class EvidenceVerificationAgent:
                 claim=claim,
                 evidence=evidence_text,
                 similarity=lexical_similarity,
+                claim_model=claim_model,
+                claim_benchmark=claim_benchmark,
+                claim_value=claim_value,
+                claim_is_percent=claim_is_percent,
+                claim_setting=claim_setting,
+                claim_metric=claim_metric,
             )
 
             normalized_match_score = match_details["structured_match_score"]
