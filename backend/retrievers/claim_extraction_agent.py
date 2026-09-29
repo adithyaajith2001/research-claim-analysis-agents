@@ -55,6 +55,7 @@ from config import (
     SECONDS_BETWEEN_CALLS,
     MAX_RETRIES,
     VALIDATED_BENCHMARKS,
+    EXTRACTION_MAX_CLAIMS_PER_CONTEXT,
 )
 
 
@@ -69,7 +70,7 @@ MAX_CONTEXT_CHUNKS = 5
 MAX_CONTEXT_CHARS = 20000
 
 # Gemini should return no more than eight claims per context.
-MAX_CLAIMS_PER_RESPONSE = 8
+#MAX_CLAIMS_PER_RESPONSE = 30
 
 # Expand benchmark anchors far enough to recover PDF-extracted table headers
 # and rows that are split across neighboring chunks.
@@ -5382,22 +5383,15 @@ def extract_claims_from_text(
         # Enforce maximum VALID claims
         # ----------------------------------------------------
 
-        if len(
-            valid_claims
-        ) > MAX_CLAIMS_PER_RESPONSE:
-
+        if len(valid_claims) > EXTRACTION_MAX_CLAIMS_PER_CONTEXT:
             print(
                 f"[extract] paper {paper_id}: "
                 f"Gemini produced "
                 f"{len(valid_claims)} valid claims; "
                 f"keeping first "
-                f"{MAX_CLAIMS_PER_RESPONSE}"
+                f"{EXTRACTION_MAX_CLAIMS_PER_CONTEXT}"
             )
-
-
-            valid_claims = valid_claims[
-                :MAX_CLAIMS_PER_RESPONSE
-            ]
+            valid_claims = valid_claims[:EXTRACTION_MAX_CLAIMS_PER_CONTEXT]
 
 
         # ====================================================
