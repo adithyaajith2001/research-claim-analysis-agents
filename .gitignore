@@ -1,5 +1,35 @@
-
-*.db
-__pycache__/
-*.pyc
+﻿# Environment variables and secrets
 .env
+.env.*
+!.env.example
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# SQLite databases
+*.db
+*.db-wal
+*.db-shm
+
+# Frontend dependencies and build files
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+
+# Logs and temporary files
+*.log
+
+# Local duplicate folders and source archive
+/backend/backend/
+/backend/retrievers/agents/
+frontend/src.zip
+/frontend/src/pages/Dashboard.truncated-backup.jsx

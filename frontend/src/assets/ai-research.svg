@@ -1,0 +1,149 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import "../styles/login.css";
+
+import aiImage from "../assets/ai-research.svg";
+
+function Login() {
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+
+    // Prototype login
+    if (email.trim() !== "" && password.trim() !== "") {
+      navigate("/home");
+    } else {
+      alert("Please enter your Email and Password");
+    }
+  };
+
+  return (
+    <div className="login-page">
+
+      {/* LEFT PANEL */}
+
+      <div className="login-left">
+
+        <div className="overlay">
+
+          <span className="badge">
+            AI Powered Platform
+          </span>
+
+          <h1>ResearchClaimAI</h1>
+
+          <p>
+            Analyze research papers, verify scientific claims,
+            detect contradictions, and generate evidence-based
+            insights using a multi-agent AI framework.
+          </p>
+
+          <div className="features">
+
+            <div>✔ Multi-Agent AI Architecture</div>
+
+            <div>✔ Scientific Claim Verification</div>
+
+            <div>✔ Cross-Paper Contradiction Detection</div>
+
+            <div>✔ Interactive Research Dashboard</div>
+
+          </div>
+
+          <img
+            src={aiImage}
+            alt="Research AI"
+            className="hero-image"
+          />
+
+        </div>
+
+      </div>
+
+      {/* RIGHT PANEL */}
+
+      <div className="login-right">
+
+        <form
+          className="login-card"
+          onSubmit={handleLogin}
+        >
+
+          <h2>Welcome Back 👋</h2>
+
+          <p>
+            Login to continue
+          </p>
+
+          <input
+            type="email"
+            placeholder="Email Address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <div className="remember">
+
+            <label>
+
+              <input type="checkbox" />
+
+              Remember Me
+
+            </label>
+
+            <a href="#">
+              Forgot Password?
+            </a>
+
+          </div>
+
+          <button type="submit">
+
+            Login
+
+          </button>
+
+          <div className="divider">
+
+            OR
+
+          </div>
+
+          <button
+            type="button"
+            className="google-btn"
+          >
+
+            Continue with Google
+
+          </button>
+
+          <p className="signup">
+
+            Don't have an account?
+
+            <span> Sign Up</span>
+
+          </p>
+
+        </form>
+
+      </div>
+
+    </div>
+  );
+}
+
+export default Login;

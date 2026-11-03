@@ -1,0 +1,15 @@
+{
+  "nodes": [
+    { "id": "Paper A", "group": 1 },
+    { "id": "Paper B", "group": 1 },
+    { "id": "Paper C", "group": 1 },
+    { "id": "Claim", "group": 2 },
+    { "id": "Evidence", "group": 3 }
+  ],
+  "links": [
+    { "source": "Paper A", "target": "Claim" },
+    { "source": "Paper B", "target": "Claim" },
+    { "source": "Paper C", "target": "Claim" },
+    { "source": "Claim", "target": "Evidence" }
+  ]
+}

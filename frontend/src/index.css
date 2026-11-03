@@ -1,0 +1,145 @@
+/* ==============================
+        GLOBAL RESET
+============================== */
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+html{
+  scroll-behavior:smooth;
+}
+
+body{
+
+    font-family:'Poppins',sans-serif;
+
+    background:#050816;
+
+    color:white;
+
+    overflow-x:hidden;
+
+    overflow-y:auto;
+    min-height: 100vh;
+
+}
+/* ==============================
+          ROOT
+============================== */
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  height: auto;
+  overflow: visible;
+}
+
+/* ==============================
+          LINKS
+============================== */
+
+a{
+
+  text-decoration:none;
+
+  color:inherit;
+
+}
+
+/* ==============================
+          IMAGES
+============================== */
+
+img{
+
+  max-width:100%;
+
+  display:block;
+
+}
+
+/* ==============================
+          BUTTONS
+============================== */
+
+button{
+
+  font-family:inherit;
+
+  cursor:pointer;
+
+  border:none;
+
+}
+
+/* ==============================
+          INPUTS
+============================== */
+
+input,
+textarea,
+select{
+
+  font-family:inherit;
+
+  outline:none;
+
+}
+
+/* ==============================
+          LISTS
+============================== */
+
+ul,
+ol{
+
+  list-style:none;
+
+}
+
+/* ==============================
+          HEADINGS
+============================== */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6{
+
+  color:white;
+
+  font-weight:700;
+
+}
+
+p{
+
+  color:#BFD0EA;
+
+  line-height:1.8;
+
+}
+/* ==============================
+   FORCE PAGE SCROLLING
+============================== */
+
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+    height: auto;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+}
+
+#root {
+    width: 100%;
+    min-height: 100vh;
+    height: auto !important;
+    overflow: visible !important;
+}

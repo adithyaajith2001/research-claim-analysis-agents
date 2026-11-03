@@ -1,773 +1,510 @@
-# import requests
-# import xml.etree.ElementTree as ET
-# import json
-# import os
-# from datetime import datetime
-# import warnings
+"""
+arxiv_retriever.py
 
-# from paper_schema import StandardPaper
+Searches arXiv and converts every retrieved paper into the project's
+StandardPaper object before returning it to the unified retriever.
 
-# warnings.filterwarnings("ignore")
+The unified retriever expects objects that implement get_primary_id().
+"""
 
-# ARXIV_API_URL = "http://export.arxiv.org/api/query?"
-
-
-# def search_arxiv(query, max_results=5):
-#     """Search arXiv for papers."""
-
-#     params = {
-#         "search_query": f"all:{query}",
-#         "max_results": max_results,
-#         "sortBy": "relevance",
-#         "sortOrder": "descending"
-#     }
-
-#     print(f"Searching arXiv for: '{query}'...")
-
-#     try:
-#         response = requests.get(
-#             ARXIV_API_URL,
-#             params=params,
-#             verify=False,
-#             timeout=15
-#         )
-
-#         response.raise_for_status()
-
-#         return response
-
-#     except requests.RequestException as e:
-#         print(f"Error searching arXiv: {e}")
-#         return None
-
-
-# def generate_metadata_tags(query):
-#     """Generate metadata tags based on search query."""
-
-#     tag_mapping = {
-#         "transformers": [
-#             "transformers",
-#             "attention",
-#             "nlp",
-#             "deep-learning"
-#         ],
-
-#         "neural networks": [
-#             "neural-networks",
-#             "deep-learning",
-#             "ml",
-#             "ai"
-#         ],
-
-#         "machine learning": [
-#             "machine-learning",
-#             "ml",
-#             "ai",
-#             "algorithms"
-#         ],
-
-#         "deep learning": [
-#             "deep-learning",
-#             "neural-networks",
-#             "cnn",
-#             "rnn"
-#         ],
-
-#         "nlp": [
-#             "nlp",
-#             "transformers",
-#             "language-models",
-#             "text-processing"
-#         ],
-
-#         "computer vision": [
-#             "computer-vision",
-#             "cnn",
-#             "image-processing",
-#             "detection"
-#         ],
-#     }
-
-#     query_lower = query.lower()
-
-#     for key, tags in tag_mapping.items():
-#         if key in query_lower:
-#             return tags
-
-#     return [
-#         query.lower().replace(" ", "-")
-#     ]
-
-
-# def parse_papers_from_xml(xml_string, query):
-#     """
-#     Parse arXiv XML response and return StandardPaper objects.
-#     """
-
-#     papers = []
-
-#     try:
-#         # Parse XML
-#         root = ET.fromstring(xml_string)
-
-#         # arXiv XML namespaces
-#         namespace = {
-#             "atom": "http://www.w3.org/2005/Atom",
-#             "arxiv": "http://arxiv.org/schemas/atom"
-#         }
-
-#         # Find all paper entries
-#         entries = root.findall(
-#             "atom:entry",
-#             namespace
-#         )
-
-#         print(
-#             f"Found {len(entries)} papers in XML response."
-#         )
-
-#         # Generate metadata tags
-#         metadata_tags = generate_metadata_tags(query)
-
-#         for entry in entries:
-
-#             # =========================================
-#             # TITLE
-#             # =========================================
-
-#             title_element = entry.find(
-#                 "atom:title",
-#                 namespace
-#             )
-
-#             title = (
-#                 title_element.text.strip()
-#                 if title_element is not None
-#                 and title_element.text
-#                 else ""
-#             )
-
-#             # =========================================
-#             # ARXIV ID
-#             # =========================================
-
-#             id_element = entry.find(
-#                 "atom:id",
-#                 namespace
-#             )
-
-#             arxiv_id = ""
-
-#             if id_element is not None and id_element.text:
-
-#                 arxiv_id = (
-#                     id_element.text
-#                     .split("/abs/")[-1]
-#                     .strip()
-#                 )
-
-#             # =========================================
-#             # PUBLISHED DATE
-#             # =========================================
-
-#             published_element = entry.find(
-#                 "atom:published",
-#                 namespace
-#             )
-
-#             published = (
-#                 published_element.text
-#                 if published_element is not None
-#                 else None
-#             )
-
-#             # =========================================
-#             # ABSTRACT
-#             # =========================================
-
-#             summary_element = entry.find(
-#                 "atom:summary",
-#                 namespace
-#             )
-
-#             summary = (
-#                 summary_element.text.strip()
-#                 if summary_element is not None
-#                 and summary_element.text
-#                 else ""
-#             )
-
-#             # =========================================
-#             # AUTHORS
-#             # =========================================
-
-#             authors = []
-
-#             for author in entry.findall(
-#                 "atom:author",
-#                 namespace
-#             ):
-
-#                 name_element = author.find(
-#                     "atom:name",
-#                     namespace
-#                 )
-
-#                 if (
-#                     name_element is not None
-#                     and name_element.text
-#                 ):
-#                     authors.append(
-#                         name_element.text.strip()
-#                     )
-
-#             # =========================================
-#             # PDF URL
-#             # =========================================
-
-#             pdf_url = None
-
-#             for link in entry.findall(
-#                 "atom:link",
-#                 namespace
-#             ):
-
-#                 if link.get("title") == "pdf":
-
-#                     pdf_url = link.get("href")
-
-#                     break
-
-#             # =========================================
-#             # YEAR
-#             # =========================================
-
-#             year = None
-
-#             if published:
-
-#                 try:
-
-#                     year = int(
-#                         published.split("-")[0]
-#                     )
-
-#                 except (
-#                     ValueError,
-#                     IndexError
-#                 ):
-
-#                     year = None
-
-#             # =========================================
-#             # RAW METADATA
-#             # =========================================
-
-#             raw_metadata = {
-#                 "published_date": published,
-#                 "metadata_tags": metadata_tags
-#             }
-
-#             # =========================================
-#             # CREATE STANDARD PAPER
-#             # =========================================
-
-#             paper = StandardPaper(
-
-#                 arxiv_id=arxiv_id,
-
-#                 title=title,
-
-#                 authors=authors,
-
-#                 abstract=summary,
-
-#                 year=year,
-
-#                 pdf_url=pdf_url,
-
-#                 source="arXiv",
-
-#                 # This is when OUR SYSTEM
-#                 # retrieved the paper
-#                 retrieved_at=datetime.now().isoformat(),
-
-#                 # Publication date stays here
-#                 raw_metadata=raw_metadata
-#             )
-
-#             papers.append(paper)
-
-#         return papers
-
-#     except ET.ParseError as e:
-
-#         print(
-#             f"Error parsing arXiv XML: {e}"
-#         )
-
-#         return []
-
-#     except Exception as e:
-
-#         print(
-#             f"Error processing arXiv papers: {e}"
-#         )
-
-#         return []
-
-
-# def standard_papers_to_dicts(papers):
-#     """
-#     Convert StandardPaper objects into dictionaries
-#     so they can be saved to JSON.
-#     """
-
-#     result = []
-
-#     for paper in papers:
-
-#         # Pydantic v2
-#         if hasattr(
-#             paper,
-#             "model_dump"
-#         ):
-
-#             result.append(
-#                 paper.model_dump()
-#             )
-
-#         # Pydantic v1
-#         elif hasattr(
-#             paper,
-#             "dict"
-#         ):
-
-#             result.append(
-#                 paper.dict()
-#             )
-
-#         # Normal Python object
-#         elif hasattr(
-#             paper,
-#             "__dict__"
-#         ):
-
-#             result.append(
-#                 paper.__dict__
-#             )
-
-#         # Already a dictionary
-#         elif isinstance(
-#             paper,
-#             dict
-#         ):
-
-#             result.append(paper)
-
-#         else:
-
-#             raise TypeError(
-#                 f"Unsupported paper type: {type(paper)}"
-#             )
-
-#     return result
-
-
-# def save_papers_to_json(
-#     papers,
-#     filename="papers.json"
-# ):
-#     """Save StandardPaper objects to JSON."""
-
-#     filepath = f"backend/data/{filename}"
-
-#     # Create directory if it doesn't exist
-#     os.makedirs(
-#         "backend/data",
-#         exist_ok=True
-#     )
-
-#     try:
-
-#         # Convert StandardPaper objects
-#         # to dictionaries
-#         paper_dicts = standard_papers_to_dicts(
-#             papers
-#         )
-
-#         # Save JSON
-#         with open(
-#             filepath,
-#             "w",
-#             encoding="utf-8"
-#         ) as f:
-
-#             json.dump(
-#                 paper_dicts,
-#                 f,
-#                 indent=2,
-#                 ensure_ascii=False
-#             )
-
-#         print(
-#             f"✓ Saved {len(papers)} papers "
-#             f"to {filepath}"
-#         )
-
-#     except Exception as e:
-
-#         print(
-#             f"Error saving papers to JSON: {e}"
-#         )
-
-
-# # ============================================================
-# # MAIN EXECUTION
-# # ============================================================
-
-# if __name__ == "__main__":
-
-#     query = "transformers"
-
-#     # =========================================
-#     # STEP 1: Search arXiv
-#     # =========================================
-
-#     response = search_arxiv(
-#         query,
-#         max_results=3
-#     )
-
-#     if response is not None:
-
-#         print(
-#             f"Status Code: {response.status_code}"
-#         )
-
-#         if response.status_code == 200:
-
-#             # =========================================
-#             # STEP 2: Parse XML
-#             # =========================================
-
-#             papers = parse_papers_from_xml(
-#                 response.text,
-#                 query
-#             )
-
-#             # =========================================
-#             # STEP 3: Save papers
-#             # =========================================
-
-#             save_papers_to_json(
-#                 papers
-#             )
-
-#             # =========================================
-#             # STEP 4: Print results
-#             # =========================================
-
-#             print(
-#                 f"\n✓ Retrieved "
-#                 f"{len(papers)} papers:\n"
-#             )
-
-#             for paper in papers:
-
-#                 # Convert to dictionary
-#                 if hasattr(
-#                     paper,
-#                     "model_dump"
-#                 ):
-
-#                     paper_data = (
-#                         paper.model_dump()
-#                     )
-
-#                 elif hasattr(
-#                     paper,
-#                     "dict"
-#                 ):
-
-#                     paper_data = (
-#                         paper.dict()
-#                     )
-
-#                 else:
-
-#                     paper_data = (
-#                         paper.__dict__
-#                     )
-
-#                 print(
-#                     f"Title: "
-#                     f"{paper_data.get('title', '')}"
-#                 )
-
-#                 print(
-#                     f"Authors: "
-#                     f"{', '.join(paper_data.get('authors', []))}"
-#                 )
-
-#                 print(
-#                     f"arXiv ID: "
-#                     f"{paper_data.get('arxiv_id', '')}"
-#                 )
-
-#                 print(
-#                     f"Year: "
-#                     f"{paper_data.get('year', '')}"
-#                 )
-
-#                 print(
-#                     f"PDF: "
-#                     f"{paper_data.get('pdf_url', '')}"
-#                 )
-
-#                 raw_metadata = paper_data.get(
-#                     "raw_metadata",
-#                     {}
-#                 )
-
-#                 print(
-#                     f"Published: "
-#                     f"{raw_metadata.get('published_date', '')}"
-#                 )
-
-#                 print(
-#                     f"Retrieved: "
-#                     f"{paper_data.get('retrieved_at', '')}"
-#                 )
-
-#                 print(
-#                     f"Tags: "
-#                     f"{raw_metadata.get('metadata_tags', [])}"
-#                 )
-
-#                 print("---")
-
-#         else:
-
-#             print(
-#                 f"Error: {response.status_code}"
-#             )
-
-#     else:
-
-#         print(
-#             "✗ arXiv request failed."
-#         )
-
-import requests
-import xml.etree.ElementTree as ET
 import json
 import os
-from datetime import datetime
 import warnings
+import xml.etree.ElementTree as ET
+from datetime import datetime
+
+import requests
 
 from paper_schema import StandardPaper
 
 warnings.filterwarnings("ignore")
 
-ARXIV_API_URL = "http://export.arxiv.org/api/query?"
+
+# ============================================================
+# ARXIV API
+# ============================================================
+
+ARXIV_API_URLS = [
+    "https://export.arxiv.org/api/query",
+    "https://arxiv.org/api/query",
+]
 
 
-def search_arxiv(query, max_results=5):
-    """Search arXiv for papers."""
+# ============================================================
+# BASE DIRECTORY
+# ============================================================
+
+BASE_DIR = os.path.dirname(
+    os.path.abspath(__file__)
+)
+
+DATA_DIR = os.path.join(
+    BASE_DIR,
+    "data"
+)
+
+os.makedirs(
+    DATA_DIR,
+    exist_ok=True
+)
+
+
+# ============================================================
+# SEARCH ARXIV
+# ============================================================
+
+def search_arxiv(
+    query,
+    max_results=5
+):
+    """
+    Search arXiv and return the raw requests.Response object.
+    """
+
+    try:
+        max_results = int(max_results)
+    except (ValueError, TypeError):
+        max_results = 5
+
+    max_results = max(
+        1,
+        min(max_results, 20)
+    )
 
     params = {
         "search_query": f"all:{query}",
+        "start": 0,
         "max_results": max_results,
         "sortBy": "relevance",
-        "sortOrder": "descending"
+        "sortOrder": "descending",
     }
 
-    print(f"Searching arXiv for: '{query}'...")
+    print()
+    print("=" * 70)
+    print("ARXIV SEARCH")
+    print("=" * 70)
+    print(f"Query: {query}")
+    print(f"Maximum results: {max_results}")
 
-    try:
-        response = requests.get(
-            ARXIV_API_URL,
-            params=params,
-            verify=False,
-            timeout=15
+    last_error = None
+
+    for api_url in ARXIV_API_URLS:
+
+        print()
+        print("Trying endpoint:")
+        print(api_url)
+
+        try:
+
+            response = requests.get(
+                api_url,
+                params=params,
+                timeout=30,
+                verify=False,
+                headers={
+                    "User-Agent":
+                        "ResearchClaimAI/1.0"
+                },
+            )
+
+            print(
+                "HTTP status:",
+                response.status_code
+            )
+
+            if response.status_code == 200:
+
+                print(
+                    "✓ arXiv request successful."
+                )
+                print("=" * 70)
+
+                return response
+
+            print(
+                "✗ arXiv returned HTTP",
+                response.status_code
+            )
+
+            print(
+                "Response:",
+                response.text[:300]
+            )
+
+        except requests.exceptions.SSLError as error:
+
+            last_error = error
+
+            print(
+                "✗ SSL error:"
+            )
+            print(error)
+
+        except requests.exceptions.Timeout as error:
+
+            last_error = error
+
+            print(
+                "✗ Request timed out."
+            )
+            print(error)
+
+        except requests.exceptions.ConnectionError as error:
+
+            last_error = error
+
+            print(
+                "✗ Connection error:"
+            )
+            print(error)
+
+        except requests.exceptions.RequestException as error:
+
+            last_error = error
+
+            print(
+                "✗ Request error:"
+            )
+            print(error)
+
+        except Exception as error:
+
+            last_error = error
+
+            print(
+                "✗ Unexpected error:"
+            )
+            print(error)
+
+    print()
+    print("=" * 70)
+    print("ARXIV SEARCH FAILED")
+    print("=" * 70)
+
+    if last_error:
+        print(
+            "Last error:",
+            last_error
         )
 
-        response.raise_for_status()
+    print("=" * 70)
 
-        return response
+    return None
 
-    except requests.RequestException as e:
-        print(f"Error searching arXiv: {e}")
-        return None
 
+# ============================================================
+# METADATA TAGS
+# ============================================================
 
 def generate_metadata_tags(query):
-    """Generate metadata tags based on search query."""
 
     tag_mapping = {
+
         "transformers": [
             "transformers",
             "attention",
             "nlp",
-            "deep-learning"
+            "deep-learning",
         ],
 
         "neural networks": [
             "neural-networks",
             "deep-learning",
             "ml",
-            "ai"
+            "ai",
         ],
 
         "machine learning": [
             "machine-learning",
             "ml",
             "ai",
-            "algorithms"
+            "algorithms",
         ],
 
         "deep learning": [
             "deep-learning",
             "neural-networks",
             "cnn",
-            "rnn"
+            "rnn",
         ],
 
         "nlp": [
             "nlp",
             "transformers",
             "language-models",
-            "text-processing"
+            "text-processing",
         ],
 
         "computer vision": [
             "computer-vision",
             "cnn",
             "image-processing",
-            "detection"
+            "detection",
+        ],
+
+        "climate change": [
+            "climate-change",
+            "climate",
+            "environment",
+            "global-warming",
+        ],
+
+        "air quality": [
+            "air-quality",
+            "pollution",
+            "environment",
+            "atmosphere",
+        ],
+
+        "artificial intelligence": [
+            "artificial-intelligence",
+            "ai",
+            "machine-learning",
+            "deep-learning",
+        ],
+
+        "healthcare": [
+            "healthcare",
+            "medical",
+            "ai",
+            "medicine",
+        ],
+
+        "blockchain": [
+            "blockchain",
+            "distributed-ledger",
+            "security",
+            "decentralization",
         ],
     }
 
-    query_lower = query.lower()
+    query_lower = str(
+        query
+    ).lower()
 
     for key, tags in tag_mapping.items():
+
         if key in query_lower:
             return tags
 
-    return [
-        query.lower().replace(" ", "-")
-    ]
+    words = query_lower.split()
+
+    tags = []
+
+    for word in words:
+
+        cleaned = word.strip(
+            ".,!?;:"
+        )
+
+        if cleaned:
+            tags.append(
+                cleaned.replace(
+                    " ",
+                    "-"
+                )
+            )
+
+    return (
+        tags
+        if tags
+        else ["research"]
+    )
 
 
-def parse_papers_from_xml(xml_string, query):
+# ============================================================
+# XML TEXT HELPER
+# ============================================================
+
+def get_element_text(
+    element,
+    namespace,
+    tag
+):
+
+    child = element.find(
+        tag,
+        namespace
+    )
+
+    if (
+        child is not None
+        and child.text
+    ):
+        return child.text.strip()
+
+    return ""
+
+
+# ============================================================
+# PARSE ARXIV XML
+# ============================================================
+
+def parse_papers_from_xml(
+    xml_string,
+    query
+):
     """
-    Parse arXiv XML response and return StandardPaper objects.
+    Parse arXiv XML and return List[StandardPaper].
+
+    IMPORTANT:
+    The older implementation returned plain dictionaries.
+    UnifiedPaperRetriever now uses StandardPaper.get_primary_id(),
+    so returning dictionaries caused:
+
+        'dict' object has no attribute 'get_primary_id'
+
+    This function now creates StandardPaper objects directly.
     """
 
     papers = []
 
-    try:
-        # Parse XML
-        root = ET.fromstring(xml_string)
-
-        # arXiv XML namespaces
-        namespace = {
-            "atom": "http://www.w3.org/2005/Atom",
-            "arxiv": "http://arxiv.org/schemas/atom"
-        }
-
-        # Find all paper entries
-        entries = root.findall(
-            "atom:entry",
-            namespace
-        )
+    if xml_string is None:
 
         print(
-            f"Found {len(entries)} papers in XML response."
+            "ERROR: XML response is None."
         )
 
-        # Generate metadata tags
-        metadata_tags = generate_metadata_tags(query)
+        return []
 
-        for entry in entries:
+    if hasattr(
+        xml_string,
+        "text"
+    ):
 
-            # =========================================
+        xml_string = xml_string.text
+
+    if not isinstance(
+        xml_string,
+        (str, bytes)
+    ):
+
+        print(
+            "ERROR: Invalid XML type:",
+            type(xml_string)
+        )
+
+        return []
+
+    if not xml_string:
+
+        print(
+            "ERROR: Empty XML response."
+        )
+
+        return []
+
+    try:
+
+        root = ET.fromstring(
+            xml_string
+        )
+
+    except ET.ParseError as error:
+
+        print(
+            "ERROR parsing arXiv XML:",
+            error
+        )
+
+        return []
+
+    except Exception as error:
+
+        print(
+            "ERROR reading arXiv response:",
+            error
+        )
+
+        return []
+
+    namespace = {
+        "atom":
+            "http://www.w3.org/2005/Atom",
+        "arxiv":
+            "http://arxiv.org/schemas/atom",
+    }
+
+    entries = root.findall(
+        "atom:entry",
+        namespace
+    )
+
+    print(
+        f"Found {len(entries)} papers "
+        "in XML response."
+    )
+
+    metadata_tags = generate_metadata_tags(
+        query
+    )
+
+    for index, entry in enumerate(
+        entries,
+        start=1
+    ):
+
+        try:
+
+            # ------------------------------------------------
             # TITLE
-            # =========================================
+            # ------------------------------------------------
 
-            title_element = entry.find(
-                "atom:title",
-                namespace
+            title = get_element_text(
+                entry,
+                namespace,
+                "atom:title"
             )
 
-            title = (
-                title_element.text.strip()
-                if title_element is not None
-                and title_element.text
-                else ""
+            title = " ".join(
+                title.split()
             )
 
-            # =========================================
+            # ------------------------------------------------
             # ARXIV ID
-            # =========================================
+            # ------------------------------------------------
 
-            id_element = entry.find(
-                "atom:id",
-                namespace
+            arxiv_id = get_element_text(
+                entry,
+                namespace,
+                "atom:id"
             )
 
-            arxiv_id = ""
-
-            if id_element is not None and id_element.text:
+            if "/abs/" in arxiv_id:
 
                 arxiv_id = (
-                    id_element.text
+                    arxiv_id
                     .split("/abs/")[-1]
-                    .strip()
                 )
 
-            # =========================================
-            # PUBLISHED DATE
-            # =========================================
+            arxiv_id = arxiv_id.strip()
 
-            published_element = entry.find(
-                "atom:published",
-                namespace
-            )
-
-            published = (
-                published_element.text
-                if published_element is not None
-                else None
-            )
-
-            # =========================================
+            # ------------------------------------------------
             # ABSTRACT
-            # =========================================
+            # ------------------------------------------------
 
-            summary_element = entry.find(
-                "atom:summary",
-                namespace
+            abstract = get_element_text(
+                entry,
+                namespace,
+                "atom:summary"
             )
 
-            summary = (
-                summary_element.text.strip()
-                if summary_element is not None
-                and summary_element.text
-                else ""
+            abstract = " ".join(
+                abstract.split()
             )
 
-            # =========================================
+            # ------------------------------------------------
             # AUTHORS
-            # =========================================
+            # ------------------------------------------------
 
             authors = []
 
-            for author in entry.findall(
+            author_elements = entry.findall(
                 "atom:author",
                 namespace
-            ):
+            )
+
+            for author in author_elements:
 
                 name_element = author.find(
                     "atom:name",
@@ -778,60 +515,109 @@ def parse_papers_from_xml(xml_string, query):
                     name_element is not None
                     and name_element.text
                 ):
+
                     authors.append(
                         name_element.text.strip()
                     )
 
-            # =========================================
-            # PDF URL
-            # =========================================
+            # ------------------------------------------------
+            # DATES
+            # ------------------------------------------------
 
-            pdf_url = None
+            published = get_element_text(
+                entry,
+                namespace,
+                "atom:published"
+            )
 
-            for link in entry.findall(
-                "atom:link",
-                namespace
-            ):
-
-                if link.get("title") == "pdf":
-
-                    pdf_url = link.get("href")
-
-                    break
-
-            # =========================================
-            # YEAR
-            # =========================================
+            updated = get_element_text(
+                entry,
+                namespace,
+                "atom:updated"
+            )
 
             year = None
 
             if published:
 
                 try:
-
                     year = int(
-                        published.split("-")[0]
+                        published[:4]
                     )
 
                 except (
                     ValueError,
                     IndexError
                 ):
-
                     year = None
 
-            # =========================================
-            # RAW METADATA
-            # =========================================
+            # ------------------------------------------------
+            # LINKS
+            # ------------------------------------------------
 
-            raw_metadata = {
-                "published_date": published,
-                "metadata_tags": metadata_tags
-            }
+            pdf_url = ""
+            abs_url = ""
 
-            # =========================================
-            # CREATE STANDARD PAPER
-            # =========================================
+            for link in entry.findall(
+                "atom:link",
+                namespace
+            ):
+
+                href = link.get(
+                    "href"
+                )
+
+                link_title = link.get(
+                    "title"
+                )
+
+                link_type = link.get(
+                    "type"
+                )
+
+                if not href:
+                    continue
+
+                if (
+                    link_title == "pdf"
+                    or link_type ==
+                    "application/pdf"
+                ):
+
+                    pdf_url = href
+
+                if (
+                    link_title == "alternate"
+                    or link_type ==
+                    "text/html"
+                ):
+
+                    if "/abs/" in href:
+                        abs_url = href
+
+            # ------------------------------------------------
+            # FALLBACK URLS
+            # ------------------------------------------------
+
+            if arxiv_id:
+
+                if not abs_url:
+
+                    abs_url = (
+                        "https://arxiv.org/abs/"
+                        f"{arxiv_id}"
+                    )
+
+                if not pdf_url:
+
+                    pdf_url = (
+                        "https://arxiv.org/pdf/"
+                        f"{arxiv_id}"
+                    )
+
+            # ------------------------------------------------
+            # STANDARD PAPER OBJECT
+            # ------------------------------------------------
 
             paper = StandardPaper(
 
@@ -841,7 +627,7 @@ def parse_papers_from_xml(xml_string, query):
 
                 authors=authors,
 
-                abstract=summary,
+                abstract=abstract,
 
                 year=year,
 
@@ -849,68 +635,82 @@ def parse_papers_from_xml(xml_string, query):
 
                 source="arXiv",
 
-                # This is when OUR SYSTEM
-                # retrieved the paper
-                retrieved_at=datetime.now().isoformat(),
+                retrieved_at=(
+                    datetime.now().isoformat()
+                ),
 
-                # Publication date stays here
-                raw_metadata=raw_metadata
+                raw_metadata={
+                    "published_date":
+                        published,
+
+                    "updated_date":
+                        updated,
+
+                    "metadata_tags":
+                        metadata_tags,
+
+                    "raw_text":
+                        "",
+
+                    "text_length":
+                        0,
+                },
             )
 
-            papers.append(paper)
+            papers.append(
+                paper
+            )
 
-        return papers
+            print(
+                f"✓ Paper {index}: "
+                f"{title[:100]}"
+            )
 
-    except ET.ParseError as e:
+        except Exception as error:
 
-        print(
-            f"Error parsing arXiv XML: {e}"
-        )
+            print(
+                f"✗ Error processing paper "
+                f"{index}: {error}"
+            )
 
-        return []
+            continue
 
-    except Exception as e:
+    print()
 
-        print(
-            f"Error processing arXiv papers: {e}"
-        )
+    print(
+        f"Successfully parsed "
+        f"{len(papers)} papers."
+    )
 
-        return []
+    return papers
 
 
-class ArxivRetriever:
+# ============================================================
+# SAVE PAPERS
+# ============================================================
+
+def standard_papers_to_dicts(
+    papers
+):
     """
-    PATCHED by Malavika: class wrapper around the module-level functions
-    above. unified_retriever.py does `from arxiv_retriever import
-    ArxivRetriever` and calls `self.arxiv_retriever.search_arxiv(query,
-    max_results)` as an instance method - but this file only had bare
-    functions, so that import was crashing with ImportError. This wraps
-    the existing search_arxiv() + parse_papers_from_xml() into the class
-    shape unified_retriever.py expects, matching CrossRefRetriever and
-    SemanticScholarRetriever's interface (a .search_x(query, max_results)
-    method returning List[StandardPaper]).
-    """
-
-    def search_arxiv(self, query, max_results=5):
-        """Returns List[StandardPaper], not the raw HTTP response."""
-        response = search_arxiv(query, max_results)
-        if response is None or response.status_code != 200:
-            return []
-        return parse_papers_from_xml(response.text, query)
-
-
-def standard_papers_to_dicts(papers):
-    """
-    Convert StandardPaper objects into dictionaries
-    so they can be saved to JSON.
+    Convert StandardPaper objects or dictionaries
+    to JSON-safe dictionaries.
     """
 
     result = []
 
     for paper in papers:
 
-        # Pydantic v2
-        if hasattr(
+        if isinstance(
+            paper,
+            dict
+        ):
+
+            result.append(
+                paper
+            )
+
+        elif hasattr(
             paper,
             "model_dump"
         ):
@@ -919,7 +719,6 @@ def standard_papers_to_dicts(papers):
                 paper.model_dump()
             )
 
-        # Pydantic v1
         elif hasattr(
             paper,
             "dict"
@@ -929,7 +728,15 @@ def standard_papers_to_dicts(papers):
                 paper.dict()
             )
 
-        # Normal Python object
+        elif hasattr(
+            paper,
+            "to_dict"
+        ):
+
+            result.append(
+                paper.to_dict()
+            )
+
         elif hasattr(
             paper,
             "__dict__"
@@ -939,18 +746,11 @@ def standard_papers_to_dicts(papers):
                 paper.__dict__
             )
 
-        # Already a dictionary
-        elif isinstance(
-            paper,
-            dict
-        ):
-
-            result.append(paper)
-
         else:
 
             raise TypeError(
-                f"Unsupported paper type: {type(paper)}"
+                "Unsupported paper type: "
+                f"{type(paper)}"
             )
 
     return result
@@ -960,183 +760,198 @@ def save_papers_to_json(
     papers,
     filename="papers.json"
 ):
-    """Save StandardPaper objects to JSON."""
+    """
+    Save papers relative to retrievers/data.
+    """
 
-    filepath = f"backend/data/{filename}"
-
-    # Create directory if it doesn't exist
-    os.makedirs(
-        "backend/data",
-        exist_ok=True
+    filepath = os.path.join(
+        DATA_DIR,
+        filename
     )
 
     try:
 
-        # Convert StandardPaper objects
-        # to dictionaries
-        paper_dicts = standard_papers_to_dicts(
-            papers
+        paper_dicts = (
+            standard_papers_to_dicts(
+                papers
+            )
         )
 
-        # Save JSON
         with open(
             filepath,
             "w",
             encoding="utf-8"
-        ) as f:
+        ) as file:
 
             json.dump(
                 paper_dicts,
-                f,
+                file,
                 indent=2,
                 ensure_ascii=False
             )
 
+        print()
         print(
-            f"✓ Saved {len(papers)} papers "
-            f"to {filepath}"
+            f"✓ Saved {len(paper_dicts)} papers"
         )
 
-    except Exception as e:
+        print(
+            f"Location: {filepath}"
+        )
+
+        return filepath
+
+    except Exception as error:
 
         print(
-            f"Error saving papers to JSON: {e}"
+            "ERROR saving papers:",
+            error
+        )
+
+        return None
+
+
+# ============================================================
+# CLASS WRAPPER
+# ============================================================
+
+class ArxivRetriever:
+    """
+    Adapter expected by UnifiedPaperRetriever.
+
+    Always returns StandardPaper objects.
+    """
+
+    def search_arxiv(
+        self,
+        query,
+        max_results=5
+    ):
+
+        response = search_arxiv(
+            query,
+            max_results
+        )
+
+        if (
+            response is None
+            or response.status_code != 200
+        ):
+
+            return []
+
+        return parse_papers_from_xml(
+            response.text,
+            query
         )
 
 
 # ============================================================
-# MAIN EXECUTION
+# TEST
 # ============================================================
 
 if __name__ == "__main__":
 
-    query = "transformers"
+    print()
+    print("=" * 70)
+    print(
+        "ResearchClaimAI - arXiv Retriever Test"
+    )
+    print("=" * 70)
 
-    # =========================================
-    # STEP 1: Search arXiv
-    # =========================================
+    test_query = "climate change"
+    test_max_results = 5
 
     response = search_arxiv(
-        query,
-        max_results=3
+        test_query,
+        test_max_results
     )
 
-    if response is not None:
+    if response is None:
 
-        print(
-            f"Status Code: {response.status_code}"
-        )
-
-        if response.status_code == 200:
-
-            # =========================================
-            # STEP 2: Parse XML
-            # =========================================
-
-            papers = parse_papers_from_xml(
-                response.text,
-                query
-            )
-
-            # =========================================
-            # STEP 3: Save papers
-            # =========================================
-
-            save_papers_to_json(
-                papers
-            )
-
-            # =========================================
-            # STEP 4: Print results
-            # =========================================
-
-            print(
-                f"\n✓ Retrieved "
-                f"{len(papers)} papers:\n"
-            )
-
-            for paper in papers:
-
-                # Convert to dictionary
-                if hasattr(
-                    paper,
-                    "model_dump"
-                ):
-
-                    paper_data = (
-                        paper.model_dump()
-                    )
-
-                elif hasattr(
-                    paper,
-                    "dict"
-                ):
-
-                    paper_data = (
-                        paper.dict()
-                    )
-
-                else:
-
-                    paper_data = (
-                        paper.__dict__
-                    )
-
-                print(
-                    f"Title: "
-                    f"{paper_data.get('title', '')}"
-                )
-
-                print(
-                    f"Authors: "
-                    f"{', '.join(paper_data.get('authors', []))}"
-                )
-
-                print(
-                    f"arXiv ID: "
-                    f"{paper_data.get('arxiv_id', '')}"
-                )
-
-                print(
-                    f"Year: "
-                    f"{paper_data.get('year', '')}"
-                )
-
-                print(
-                    f"PDF: "
-                    f"{paper_data.get('pdf_url', '')}"
-                )
-
-                raw_metadata = paper_data.get(
-                    "raw_metadata",
-                    {}
-                )
-
-                print(
-                    f"Published: "
-                    f"{raw_metadata.get('published_date', '')}"
-                )
-
-                print(
-                    f"Retrieved: "
-                    f"{paper_data.get('retrieved_at', '')}"
-                )
-
-                print(
-                    f"Tags: "
-                    f"{raw_metadata.get('metadata_tags', [])}"
-                )
-
-                print("---")
-
-        else:
-
-            print(
-                f"Error: {response.status_code}"
-            )
-
-    else:
-
+        print()
         print(
             "✗ arXiv request failed."
         )
+
+    else:
+
+        papers = parse_papers_from_xml(
+            response.text,
+            test_query
+        )
+
+        save_papers_to_json(
+            papers
+        )
+
+        print()
+        print(
+            f"Retrieved {len(papers)} papers."
+        )
+
+        for paper in papers:
+
+            print()
+            print("-" * 70)
+
+            print(
+                "Title:",
+                getattr(
+                    paper,
+                    "title",
+                    ""
+                )
+            )
+
+            print(
+                "Authors:",
+                ", ".join(
+                    getattr(
+                        paper,
+                        "authors",
+                        []
+                    )
+                )
+            )
+
+            print(
+                "Year:",
+                getattr(
+                    paper,
+                    "year",
+                    None
+                )
+            )
+
+            print(
+                "arXiv ID:",
+                getattr(
+                    paper,
+                    "arxiv_id",
+                    ""
+                )
+            )
+
+            print(
+                "Abstract URL:",
+                getattr(
+                    paper,
+                    "abs_url",
+                    ""
+                )
+            )
+
+            print(
+                "PDF URL:",
+                getattr(
+                    paper,
+                    "pdf_url",
+                    ""
+                )
+            )
+
+        print()
+        print("=" * 70)
+        print("TEST COMPLETED")
+        print("=" * 70)

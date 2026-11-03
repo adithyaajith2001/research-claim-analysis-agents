@@ -64,10 +64,16 @@ class EvidenceVerificationAgent:
         if not claim:
             return None
 
+        # Include common past-tense forms such as "scored" and "achieved".
+        # Keep this aligned with the verbs recognized by _extract_claim_value.
+        performance_verbs = (
+            r"(?:achieve(?:s|d)?|obtain(?:s|ed)?|report(?:s|ed)?|"
+            r"record(?:s|ed)?|score(?:s|d)?|get(?:s|ting)?|got|"
+            r"reach(?:es|ed)?|attain(?:s|ed)?|perform(?:s|ed)?|"
+            r"measure(?:s|d)?)"
+        )
         match = re.search(
-            r"^\s*(.+?)\s+"
-            r"(?:achieves|obtains|reports|records|scores|gets|reaches|"
-            r"attains|performs|measures)\b",
+            rf"^\s*(.+?)\s+{performance_verbs}\b",
             claim.strip(),
             flags=re.IGNORECASE,
         )
@@ -92,27 +98,68 @@ class EvidenceVerificationAgent:
 
     @staticmethod
     def _extract_claim_value(claim: str) -> Optional[Tuple[float, bool]]:
-        if not claim:
+        """Extract the performance value from common claim formats.
+
+        Examples handled include:
+            "Falcon3-3B-Instruct achieves 55.8 on MMLU."
+            "DeepSeek R1 scored 90.8 on MMLU."
+            "Model achieves an absolute accuracy of 72.10 on MMLU."
+            "MMLU accuracy is 84.5%."
+            "Accuracy: 84.5%."
+
+        The value is sought near a performance verb or metric label so that
+        model size/parameter counts earlier in the sentence are less likely
+        to be mistaken for the reported performance.
+
+        Returns (value, is_percentage), or None when no reliable value is
+        found. A percentage sign is recorded separately from the value.
+        """
+        if not claim or not claim.strip():
             return None
 
-        # Prefer the number immediately associated with the performance
-        # verb so model parameter counts do not get mistaken for the score.
-        match = re.search(
-            r"\b(?:achieves|obtains|reports|records|scores|gets|reaches|attains|"
-            r"measures)\s+"
-            r"(?:a\s+score\s+of\s+)?"
-            r"([0-9]+(?:\.[0-9]+)?)\s*(%)?",
-            claim,
-            flags=re.IGNORECASE,
+        number = r"(?P<value>[0-9]+(?:\.[0-9]+)?)(?P<percent>\s*%)?"
+
+        performance_verbs = (
+            r"(?:achieve(?:s|d)?|obtain(?:s|ed)?|report(?:s|ed)?|"
+            r"record(?:s|ed)?|score(?:s|d)?|get(?:s|ting)?|got|"
+            r"reach(?:es|ed)?|attain(?:s|ed)?|perform(?:s|ed)?|"
+            r"measure(?:s|d)?)"
         )
 
-        if not match:
-            return None
+        metric = (
+            r"(?:accuracy|score|performance|exact[-\s]?match|"
+            r"f1(?:[-\s]?score)?|bleu|rouge|auroc|auc|precision|recall)"
+        )
 
-        try:
-            return float(match.group(1)), bool(match.group(2))
-        except ValueError:
-            return None
+        # First choice: a number associated with a performance verb. This
+        # handles both "scored 90.8" and "absolute accuracy of 72.10".
+        patterns = [
+            rf"\b{performance_verbs}\s+"
+            rf"(?:(?:an?|the)\s+)?"
+            rf"(?:(?:absolute|overall|benchmark|test|top[-\s]?1|top[-\s]?5)\s+)?"
+            rf"(?:(?:accuracy|score|performance|exact[-\s]?match|"
+            rf"f1(?:[-\s]?score)?)\s+)?"
+            rf"(?:of\s+)?{number}",
+            # Metric-first forms such as "accuracy is 84.5%" or
+            # "accuracy of 84.5%".
+            rf"\b{metric}\s+(?:is|was|of)\s+{number}",
+            # Labelled forms such as "Accuracy: 84.5%" and "MMLU score=84.5".
+            rf"\b{metric}\s*[:=]\s*{number}",
+            # Compact table-like prose: "MMLU accuracy 84.5%".
+            rf"\b{metric}\s+{number}",
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, claim, flags=re.IGNORECASE)
+            if not match:
+                continue
+
+            try:
+                return float(match.group("value")), bool(match.group("percent"))
+            except (TypeError, ValueError):
+                continue
+
+        return None
 
     @staticmethod
     def _extract_claim_setting(claim: str) -> Optional[str]:

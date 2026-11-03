@@ -1,87 +1,148 @@
 [
   {
     "id": 1,
-    "title": "The Deep Arbitrary Polynomial Chaos Neural Network or how Deep Artificial Neural Networks could benefit from Data-Driven Homogeneous Chaos Theory",
-    "arxiv_id": "2306.14753v1",
-    "authors": "Sergey Oladyshkin | Timothy Praditia | Ilja Kröker | Farid Mohammadi | Wolfgang Nowak | Sebastian Otte",
-    "abstract": "Artificial Intelligence and Machine learning have been widely used in various fields of mathematical computing, physical modeling, computational science, communication science, and stochastic analysis. Approaches based on Deep Artificial Neural Networks (DANN) are very popular in our days. Depending on the learning task, the exact form of DANNs is determined via their multi-layer architecture, activation functions and the so-called loss function. However, for a majority of deep learning approaches based on DANNs, the kernel structure of neural signal processing remains the same, where the node response is encoded as a linear superposition of neural activity, while the non-linearity is triggered by the activation functions. In the current paper, we suggest to analyze the neural signal processing in DANNs from the point of view of homogeneous chaos theory as known from polynomial chaos expansion (PCE). From the PCE perspective, the (linear) response on each node of a DANN could be seen as a $1^{st}$ degree multi-variate polynomial of single neurons from the previous layer, i.e. linear weighted sum of monomials. From this point of view, the conventional DANN structure relies implicitly (but erroneously) on a Gaussian distribution of neural signals. Additionally, this view revels that by design DANNs do not necessarily fulfill any orthogonality or orthonormality condition for a majority of data-driven applications. Therefore, the prevailing handling of neural signals in DANNs could lead to redundant representation as any neural signal could contain some partial information from other neural signals. To tackle that challenge, we suggest to employ the data-driven generalization of PCE theory known as arbitrary polynomial chaos (aPC) to construct a corresponding multi-variate orthonormal representations on each node of a DANN to obtain Deep arbitrary polynomial chaos neural networks.",
-    "pdf_url": "https://arxiv.org/pdf/2306.14753v1",
-    "source": "arxiv",
-    "published_date": "2023-06-26T15:09:14Z",
-    "metadata_tags": [
-      "neural-networks",
-      "deep-learning",
-      "ml",
-      "ai"
+    "arxiv_id": "1503.07557v1",
+    "title": "Precipitation extremes under climate change",
+    "authors": [
+      "Paul A. O'Gorman"
     ],
-    "retrieved_at": "2026-07-20T14:53:46.584786"
+    "abstract": "The response of precipitation extremes to climate change is considered using results from theory, modeling, and observations, with a focus on the physical factors that control the response. Observations and simulations with climate models show that precipitation extremes intensify in response to a warming climate. However, the sensitivity of precipitation extremes to warming remains uncertain when convection is important, and it may be higher in the tropics than the extratropics. Several physical contributions govern the response of precipitation extremes. The thermodynamic contribution is robust and well understood, but theoretical understanding of the microphysical and dynamical contributions is still being developed. Orographic precipitation extremes and snowfall extremes respond differently from other precipitation extremes and require particular attention. Outstanding research challenges include the influence of mesoscale convective organization, the dependence on the duration considered, and the need to better constrain the sensitivity of tropical precipitation extremes to warming.",
+    "year": 2015,
+    "published_date": "2015-03-25T21:11:05Z",
+    "updated_date": "2015-03-25T21:11:05Z",
+    "pdf_url": "https://arxiv.org/pdf/1503.07557v1",
+    "abs_url": "https://arxiv.org/abs/1503.07557v1",
+    "source": "arXiv",
+    "retrieved_at": "2026-08-23T16:21:54.104663",
+    "metadata_tags": [
+      "climate-change",
+      "climate",
+      "environment",
+      "global-warming"
+    ],
+    "raw_text": "",
+    "text_length": 0
   },
   {
     "id": 2,
-    "title": "Learning Active Subspaces and Discovering Important Features with Gaussian Radial Basis Functions Neural Networks",
-    "arxiv_id": "2307.05639v2",
-    "authors": "Danny D'Agostino | Ilija Ilievski | Christine Annette Shoemaker",
-    "abstract": "Providing a model that achieves a strong predictive performance and is simultaneously interpretable by humans is one of the most difficult challenges in machine learning research due to the conflicting nature of these two objectives. To address this challenge, we propose a modification of the radial basis function neural network model by equipping its Gaussian kernel with a learnable precision matrix. We show that precious information is contained in the spectrum of the precision matrix that can be extracted once the training of the model is completed. In particular, the eigenvectors explain the directions of maximum sensitivity of the model revealing the active subspace and suggesting potential applications for supervised dimensionality reduction. At the same time, the eigenvectors highlight the relationship in terms of absolute variation between the input and the latent variables, thereby allowing us to extract a ranking of the input variables based on their importance to the prediction task enhancing the model interpretability. We conducted numerical experiments for regression, classification, and feature selection tasks, comparing our model against popular machine learning models, the state-of-the-art deep learning-based embedding feature selection techniques, and a transformer model for tabular data. Our results demonstrate that the proposed model does not only yield an attractive prediction performance compared to the competitors but also provides meaningful and interpretable results that potentially could assist the decision-making process in real-world applications. A PyTorch implementation of the model is available on GitHub at the following link. https://github.com/dannyzx/Gaussian-RBFNN",
-    "pdf_url": "https://arxiv.org/pdf/2307.05639v2",
-    "source": "arxiv",
-    "published_date": "2023-07-11T09:54:30Z",
-    "metadata_tags": [
-      "neural-networks",
-      "deep-learning",
-      "ml",
-      "ai"
+    "arxiv_id": "2012.10386v1",
+    "title": "Future Climate Change Projections over the Indian Region",
+    "authors": [
+      "J. Sanjay",
+      "R. Krishnan",
+      "M. V. S. Ramarao",
+      "R. Mahesh",
+      "Bhupendra Bahadur Singh",
+      "Jayashri Patel",
+      "Sandip Ingle",
+      "Preethi Bhaskar",
+      "J. V. Revadekar",
+      "T. P. Sabin",
+      "M. Mujumdar"
     ],
-    "retrieved_at": "2026-07-20T14:53:46.584786"
+    "abstract": "Assessments of impacts of climate change and future projections over the Indian region, have so far relied on a single regional climate model (RCM) - eg., the PRECIS RCM of the Hadley Centre, UK. While these assessments have provided inputs to various reports (e.g., INCCA 2010; NATCOMM2 2012), it is important to have an ensemble of climate projections drawn from multiple RCMs due to large uncertainties in regional-scale climate projections. Ensembles of multi-RCM projections driven under different perceivable socio-economic scenarios are required to capture the probable path of growth, and provide the behavior of future climate and impacts on various biophysical systems and economic sectors dependent on such systems. The Centre for Climate Change Research, Indian Institute of Tropical Meteorology (CCCR-IITM) has generated an ensemble of high resolution downscaled projections of regional climate and monsoon over South Asia until 2100 for the Intergovernmental Panel for Climate Change (IPCC)using a RCM (ICTP-RegCM4) at 50 km horizontal resolution, by driving the regional model with lateral and lower boundary conditions from multiple global atmosphere-ocean coupled models from the Coupled Model Intercomparison Project Phase 5 (CMIP5). The future projections are based on three Representation Concentration Pathway (RCP) scenarios (viz., RCP2.6, RCP4.5, RCP8.5) of the IPCC.",
+    "year": 2020,
+    "published_date": "2020-12-02T07:46:57Z",
+    "updated_date": "2020-12-02T07:46:57Z",
+    "pdf_url": "https://arxiv.org/pdf/2012.10386v1",
+    "abs_url": "https://arxiv.org/abs/2012.10386v1",
+    "source": "arXiv",
+    "retrieved_at": "2026-08-23T16:21:54.104942",
+    "metadata_tags": [
+      "climate-change",
+      "climate",
+      "environment",
+      "global-warming"
+    ],
+    "raw_text": "",
+    "text_length": 0
   },
   {
     "id": 3,
-    "title": "Hierarchical Attentional Hybrid Neural Networks for Document Classification",
-    "arxiv_id": "1901.06610v2",
-    "authors": "Jader Abreu | Luis Fred | David Macêdo | Cleber Zanchettin",
-    "abstract": "Document classification is a challenging task with important applications. The deep learning approaches to the problem have gained much attention recently. Despite the progress, the proposed models do not incorporate the knowledge of the document structure in the architecture efficiently and not take into account the contexting importance of words and sentences. In this paper, we propose a new approach based on a combination of convolutional neural networks, gated recurrent units, and attention mechanisms for document classification tasks. The main contribution of this work is the use of convolution layers to extract more meaningful, generalizable and abstract features by the hierarchical representation. The proposed method in this paper improves the results of the current attention-based approaches for document classification.",
-    "pdf_url": "https://arxiv.org/pdf/1901.06610v2",
-    "source": "arxiv",
-    "published_date": "2019-01-20T01:48:43Z",
-    "metadata_tags": [
-      "neural-networks",
-      "deep-learning",
-      "ml",
-      "ai"
+    "arxiv_id": "2008.01035v1",
+    "title": "Invasive species, extreme fire risk, and toxin release under a changing climate",
+    "authors": [
+      "Kimberley Miner",
+      "Laura Meyerson",
+      ". Climate Change Institute",
+      "School of Earth",
+      "Climate Sciences",
+      "University of Maine",
+      "Orono",
+      "ME 04469 2. Department of Natural Resources Science",
+      "University of Rhode Island",
+      "Kingston",
+      "RI 02881"
     ],
-    "retrieved_at": "2026-07-20T14:53:46.584786"
+    "abstract": "Mediterranean ecosystems such as those found in California, Central Chile, Southern Europe, and Southwest Australia host numerous, diverse, fire-adapted micro-ecosystems. These micro-ecosystems are as diverse as mountainous conifer to desert-like chaparral communities. Over the last few centuries, human intervention, invasive species, and climate warming have drastically affected the composition and health of Mediterranean ecosystems on almost every continent. Increased fuel load from fire suppression policies and the continued range expansion of non-native insects and plants, some driven by long-term drought, produced the deadliest wildfire season on record in 2018. As a consequence of these fires, a large number of structures are destroyed, releasing household chemicals into the environment as uncontrolled toxins. The mobilization of these materials can lead to health risks and disruption in both human and natural systems. This article identifies drivers that led to a structural weakening of the mosaic of fire-adapted ecosystems in California, and subsequently increased the risk of destructive and explosive wildfires throughout the state. Under a new climate regime, managing the impacts on systems moving out-of-phase with natural processes may protect lives and ensure the stability of ecosystem services.",
+    "year": 2020,
+    "published_date": "2020-08-03T17:22:18Z",
+    "updated_date": "2020-08-03T17:22:18Z",
+    "pdf_url": "https://arxiv.org/pdf/2008.01035v1",
+    "abs_url": "https://arxiv.org/abs/2008.01035v1",
+    "source": "arXiv",
+    "retrieved_at": "2026-08-23T16:21:54.105134",
+    "metadata_tags": [
+      "climate-change",
+      "climate",
+      "environment",
+      "global-warming"
+    ],
+    "raw_text": "",
+    "text_length": 0
   },
   {
     "id": 4,
-    "title": "A Neural Network-Evolutionary Computational Framework for Remaining Useful Life Estimation of Mechanical Systems",
-    "arxiv_id": "1905.05918v1",
-    "authors": "David Laredo | Zhaoyin Chen | Oliver Schütze | Jian-Qiao Sun",
-    "abstract": "This paper presents a framework for estimating the remaining useful life (RUL) of mechanical systems. The framework consists of a multi-layer perceptron and an evolutionary algorithm for optimizing the data-related parameters. The framework makes use of a strided time window to estimate the RUL for mechanical components. Tuning the data-related parameters can become a very time consuming task. The framework presented here automatically reshapes the data such that the efficiency of the model is increased. Furthermore, the complexity of the model is kept low, e.g. neural networks with few hidden layers and few neurons at each layer. Having simple models has several advantages like short training times and the capacity of being in environments with limited computational resources such as embedded systems. The proposed method is evaluated on the publicly available C-MAPSS dataset, its accuracy is compared against other state-of-the art methods for the same dataset.",
-    "pdf_url": "https://arxiv.org/pdf/1905.05918v1",
-    "source": "arxiv",
-    "published_date": "2019-05-15T02:31:45Z",
-    "metadata_tags": [
-      "neural-networks",
-      "deep-learning",
-      "ml",
-      "ai"
+    "arxiv_id": "2409.18574v2",
+    "title": "Climate Adaptation with Reinforcement Learning: Experiments with Flooding and Transportation in Copenhagen",
+    "authors": [
+      "Miguel Costa",
+      "Morten W. Petersen",
+      "Arthur Vandervoort",
+      "Martin Drews",
+      "Karyn Morrissey",
+      "Francisco C. Pereira"
     ],
-    "retrieved_at": "2026-07-20T14:53:46.584786"
+    "abstract": "Due to climate change the frequency and intensity of extreme rainfall events, which contribute to urban flooding, are expected to increase in many places. These floods can damage transport infrastructure and disrupt mobility, highlighting the need for cities to adapt to escalating risks. Reinforcement learning (RL) serves as a powerful tool for uncovering optimal adaptation strategies, determining how and where to deploy adaptation measures effectively, even under significant uncertainty. In this study, we leverage RL to identify the most effective timing and locations for implementing measures, aiming to reduce both direct and indirect impacts of flooding. Our framework integrates climate change projections of future rainfall events and floods, models city-wide motorized trips, and quantifies direct and indirect impacts on infrastructure and mobility. Preliminary results suggest that our RL-based approach can significantly enhance decision-making by prioritizing interventions in specific urban areas and identifying the optimal periods for their implementation. Our framework is publicly available: \\url{https://github.com/MLSM-at-DTU/floods_transport_rl}.",
+    "year": 2024,
+    "published_date": "2024-09-27T09:18:57Z",
+    "updated_date": "2024-11-29T13:44:15Z",
+    "pdf_url": "https://arxiv.org/pdf/2409.18574v2",
+    "abs_url": "https://arxiv.org/abs/2409.18574v2",
+    "source": "arXiv",
+    "retrieved_at": "2026-08-23T16:21:54.105249",
+    "metadata_tags": [
+      "climate-change",
+      "climate",
+      "environment",
+      "global-warming"
+    ],
+    "raw_text": "",
+    "text_length": 0
   },
   {
     "id": 5,
-    "title": "A Review on Neural Network Models of Schizophrenia and Autism Spectrum Disorder",
-    "arxiv_id": "1906.10015v2",
-    "authors": "Pablo Lanillos | Daniel Oliva | Anja Philippsen | Yuichi Yamashita | Yukie Nagai | Gordon Cheng",
-    "abstract": "This survey presents the most relevant neural network models of autism spectrum disorder and schizophrenia, from the first connectionist models to recent deep network architectures. We analyzed and compared the most representative symptoms with its neural model counterpart, detailing the alteration introduced in the network that generates each of the symptoms, and identifying their strengths and weaknesses. We additionally cross-compared Bayesian and free-energy approaches, as they are widely applied to modeling psychiatric disorders and share basic mechanisms with neural networks. Models of schizophrenia mainly focused on hallucinations and delusional thoughts using neural dysconnections or inhibitory imbalance as the predominating alteration. Models of autism rather focused on perceptual difficulties, mainly excessive attention to environment details, implemented as excessive inhibitory connections or increased sensory precision. We found an excessive tight view of the psychopathologies around one specific and simplified effect, usually constrained to the technical idiosyncrasy of the used network architecture. Recent theories and evidence on sensorimotor integration and body perception combined with modern neural network architectures could offer a broader and novel spectrum to approach these psychopathologies. This review emphasizes the power of artificial neural networks for modeling some symptoms of neurological disorders but also calls for further developing these techniques in the field of computational psychiatry.",
-    "pdf_url": "https://arxiv.org/pdf/1906.10015v2",
-    "source": "arxiv",
-    "published_date": "2019-06-24T15:10:44Z",
-    "metadata_tags": [
-      "neural-networks",
-      "deep-learning",
-      "ml",
-      "ai"
+    "arxiv_id": "1704.00563v1",
+    "title": "Impact of anthropogenic climate change on the East Asian summer monsoon",
+    "authors": [
+      "Claire Burke",
+      "Peter Stott"
     ],
-    "retrieved_at": "2026-07-20T14:53:46.584786"
+    "abstract": "The East Asian summer monsoon (EASM) is important for bringing rainfall to large areas of China. Historically, variations in the EASM have had major impacts including flooding and drought. We present an analysis of the impact of anthropogenic climate change on EASM rainfall in Eastern China using a newly updated attribution system. Our results suggest that anthropogenic climate change has led to an overall decrease in total monsoon rainfall over the past 65 years, and an increased number of dry days. However the model also predicts that anthropogenic forcings have caused the most extreme heavy rainfall events to become shorter in duration and more intense. With the potential for future changes in aerosol and greenhouse gas emissions, historical trends in monsoon rainfall may not be indicative of future changes, although extreme rainfall is projected to increase over East Asia with continued warming in the region.",
+    "year": 2017,
+    "published_date": "2017-04-03T13:12:26Z",
+    "updated_date": "2017-04-03T13:12:26Z",
+    "pdf_url": "https://arxiv.org/pdf/1704.00563v1",
+    "abs_url": "https://arxiv.org/abs/1704.00563v1",
+    "source": "arXiv",
+    "retrieved_at": "2026-08-23T16:21:54.105362",
+    "metadata_tags": [
+      "climate-change",
+      "climate",
+      "environment",
+      "global-warming"
+    ],
+    "raw_text": "",
+    "text_length": 0
   }
 ]

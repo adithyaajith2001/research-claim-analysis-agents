@@ -1,0 +1,667 @@
+/* =========================================================
+   RESEARCHCLAIMAI - ANALYSIS PAGE
+   ========================================================= */
+
+.analysis-page {
+
+    min-height: calc(100vh - 80px);
+
+    display: grid;
+
+    grid-template-columns: 0.95fr 1.05fr;
+
+    align-items: center;
+
+    gap: 70px;
+
+    padding: 70px 6vw;
+
+    background:
+        radial-gradient(
+            circle at 15% 45%,
+            rgba(59, 130, 246, 0.12),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 90% 30%,
+            rgba(124, 77, 255, 0.12),
+            transparent 30%
+        ),
+        linear-gradient(
+            135deg,
+            #050816,
+            #070d1d,
+            #050816
+        );
+
+    color: white;
+
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   LEFT HERO
+   ========================================================= */
+
+.analysis-hero {
+
+    position: relative;
+
+    display: flex;
+
+    align-items: center;
+
+    min-height: 600px;
+}
+
+
+.analysis-hero-content {
+
+    max-width: 650px;
+
+    position: relative;
+
+    z-index: 2;
+}
+
+
+/* Badge */
+
+.analysis-badge {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    margin-bottom: 25px;
+
+    padding: 9px 15px;
+
+    border-radius: 50px;
+
+    background: rgba(59, 130, 246, 0.09);
+
+    border: 1px solid rgba(59, 130, 246, 0.3);
+
+    color: #60a5fa;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    letter-spacing: 0.7px;
+}
+
+
+.analysis-badge svg {
+
+    font-size: 13px;
+}
+
+
+/* Main heading */
+
+.analysis-hero h1 {
+
+    margin: 0 0 20px;
+
+    color: #f8fafc;
+
+    font-size: clamp(45px, 5vw, 70px);
+
+    line-height: 1.05;
+
+    letter-spacing: -2px;
+
+    font-weight: 800;
+}
+
+
+.analysis-hero h1 span {
+
+    background: linear-gradient(
+        90deg,
+        #60a5fa,
+        #8b5cf6
+    );
+
+    -webkit-background-clip: text;
+
+    -webkit-text-fill-color: transparent;
+}
+
+
+.analysis-hero-content > p {
+
+    max-width: 620px;
+
+    margin: 0;
+
+    color: #9fb0cf;
+
+    font-size: 17px;
+
+    line-height: 1.8;
+}
+
+
+/* =========================================================
+   INPUT SECTION
+   ========================================================= */
+
+.analysis-input-section {
+
+    position: relative;
+
+    display: flex;
+
+    justify-content: center;
+
+    z-index: 2;
+}
+
+
+/* Card */
+
+.analysis-card {
+
+    width: 100%;
+
+    max-width: 650px;
+
+    padding: 42px;
+
+    border-radius: 28px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(25, 35, 60, 0.95),
+            rgba(13, 20, 39, 0.98)
+        );
+
+    border: 1px solid rgba(148, 163, 184, 0.12);
+
+    box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.35),
+        0 0 50px rgba(59, 130, 246, 0.06);
+
+    backdrop-filter: blur(25px);
+
+    text-align: center;
+}
+
+
+/* =========================================================
+   CARD HEADER
+   ========================================================= */
+
+.analysis-card-header {
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    text-align: center;
+
+    margin-bottom: 28px;
+}
+
+
+.analysis-icon {
+
+    width: 76px;
+
+    height: 76px;
+
+    margin-bottom: 18px;
+
+    border-radius: 50%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background:
+        linear-gradient(
+            135deg,
+            #3b82f6,
+            #7c4dff
+        );
+
+    color: white;
+
+    font-size: 31px;
+
+    box-shadow:
+        0 12px 35px rgba(99, 102, 241, 0.3);
+}
+
+
+.analysis-card-header h2 {
+
+    margin: 0 0 10px;
+
+    color: #f8fafc;
+
+    font-size: 27px;
+
+    letter-spacing: -0.5px;
+}
+
+
+.analysis-card-header p {
+
+    margin: 0;
+
+    color: #98a9c7;
+
+    font-size: 14px;
+
+    line-height: 1.6;
+}
+
+
+/* =========================================================
+   TEXT AREA
+   ========================================================= */
+
+.analysis-card textarea {
+
+    box-sizing: border-box;
+
+    width: 100%;
+
+    min-height: 170px;
+
+    padding: 20px;
+
+    resize: vertical;
+
+    border-radius: 17px;
+
+    border: 1px solid rgba(96, 165, 250, 0.13);
+
+    outline: none;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(20, 38, 76, 0.95),
+            rgba(16, 29, 60, 0.95)
+        );
+
+    color: #f8fafc;
+
+    font-family: inherit;
+
+    font-size: 15px;
+
+    line-height: 1.6;
+
+    transition:
+        border 0.25s ease,
+        box-shadow 0.25s ease,
+        background 0.25s ease;
+}
+
+
+.analysis-card textarea::placeholder {
+
+    color: #71809d;
+}
+
+
+.analysis-card textarea:focus {
+
+    border-color: rgba(96, 165, 250, 0.65);
+
+    box-shadow:
+        0 0 0 4px rgba(59, 130, 246, 0.08),
+        0 10px 35px rgba(0, 0, 0, 0.15);
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(22, 42, 84, 0.98),
+            rgba(17, 32, 65, 0.98)
+        );
+}
+
+
+/* =========================================================
+   EXAMPLE TOPICS
+   ========================================================= */
+
+.analysis-examples {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 10px;
+
+    margin-top: 22px;
+}
+
+
+.analysis-examples > span {
+
+    width: 100%;
+
+    margin-bottom: 2px;
+
+    color: #9aaac5;
+
+    font-size: 13px;
+
+    font-weight: 600;
+}
+
+
+.analysis-examples button {
+
+    margin: 0;
+
+    padding: 10px 17px;
+
+    border: 1px solid rgba(96, 165, 250, 0.15);
+
+    border-radius: 11px;
+
+    background:
+        linear-gradient(
+            135deg,
+            rgba(59, 130, 246, 0.95),
+            rgba(124, 77, 255, 0.95)
+        );
+
+    color: white;
+
+    font-family: inherit;
+
+    font-size: 12px;
+
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        filter 0.2s ease;
+}
+
+
+.analysis-examples button:hover {
+
+    transform: translateY(-2px);
+
+    filter: brightness(1.08);
+
+    box-shadow:
+        0 8px 20px rgba(99, 102, 241, 0.25);
+}
+
+
+/* =========================================================
+   ANALYZE BUTTON
+   ========================================================= */
+
+.analyze-btn {
+
+    width: auto;
+
+    min-width: 260px;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 10px;
+
+    margin-top: 25px !important;
+
+    padding: 16px 28px !important;
+
+    border: none !important;
+
+    border-radius: 14px !important;
+
+    background:
+        linear-gradient(
+            135deg,
+            #3b82f6,
+            #7c4dff
+        ) !important;
+
+    color: white !important;
+
+    font-family: inherit;
+
+    font-size: 14px !important;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 12px 30px rgba(59, 130, 246, 0.22);
+
+    transition:
+        transform 0.25s ease,
+        box-shadow 0.25s ease,
+        filter 0.25s ease;
+}
+
+
+.analyze-btn:hover {
+
+    transform: translateY(-3px);
+
+    filter: brightness(1.08);
+
+    box-shadow:
+        0 18px 40px rgba(99, 102, 241, 0.32);
+}
+
+
+.analyze-btn svg {
+
+    font-size: 14px;
+}
+
+
+/* =========================================================
+   NOTE
+   ========================================================= */
+
+.analysis-note {
+
+    max-width: 520px;
+
+    margin: 20px auto 0 !important;
+
+    color: #7182a3 !important;
+
+    font-size: 12px !important;
+
+    line-height: 1.6 !important;
+}
+
+
+/* =========================================================
+   DECORATIVE BACKGROUND
+   ========================================================= */
+
+.analysis-page::before {
+
+    content: "";
+
+    position: absolute;
+
+    width: 420px;
+
+    height: 420px;
+
+    left: -200px;
+
+    top: 40%;
+
+    border-radius: 50%;
+
+    background: rgba(37, 99, 235, 0.08);
+
+    filter: blur(100px);
+
+    pointer-events: none;
+}
+
+
+.analysis-page::after {
+
+    content: "";
+
+    position: absolute;
+
+    width: 350px;
+
+    height: 350px;
+
+    right: -150px;
+
+    top: 15%;
+
+    border-radius: 50%;
+
+    background: rgba(124, 77, 255, 0.1);
+
+    filter: blur(100px);
+
+    pointer-events: none;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1050px) {
+
+    .analysis-page {
+
+        grid-template-columns: 1fr;
+
+        gap: 30px;
+
+        padding: 60px 30px;
+    }
+
+
+    .analysis-hero {
+
+        min-height: auto;
+
+        text-align: center;
+
+        justify-content: center;
+    }
+
+
+    .analysis-hero-content {
+
+        max-width: 750px;
+    }
+
+
+    .analysis-hero-content > p {
+
+        margin-left: auto;
+
+        margin-right: auto;
+    }
+
+
+    .analysis-input-section {
+
+        width: 100%;
+    }
+
+
+    .analysis-card {
+
+        max-width: 700px;
+    }
+}
+
+
+@media (max-width: 600px) {
+
+    .analysis-page {
+
+        padding: 45px 18px;
+    }
+
+
+    .analysis-hero h1 {
+
+        font-size: 43px;
+
+        letter-spacing: -1.5px;
+    }
+
+
+    .analysis-hero-content > p {
+
+        font-size: 15px;
+    }
+
+
+    .analysis-card {
+
+        padding: 28px 20px;
+
+        border-radius: 22px;
+    }
+
+
+    .analysis-card-header h2 {
+
+        font-size: 23px;
+    }
+
+
+    .analysis-card textarea {
+
+        min-height: 150px;
+    }
+
+
+    .analysis-examples button {
+
+        flex: 1;
+
+        min-width: 120px;
+    }
+
+
+    .analyze-btn {
+
+        width: 100%;
+
+        min-width: 0;
+    }
+}

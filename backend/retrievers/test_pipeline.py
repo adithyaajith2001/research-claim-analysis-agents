@@ -31,6 +31,7 @@ through FastAPI and then consumed by the React frontend.
 
 import os
 import sys
+import time
 
 # ============================================================
 # ENSURE THIS SCRIPT USES THE CURRENT BACKEND PROJECT
@@ -880,6 +881,7 @@ def run_pipeline(
     query: str = LIVE_QUERY,
     max_results: int = 8
 ):
+    pipeline_start = time.perf_counter()
 
     # Start this development run with a clean database so
     # contradiction detection only sees the current run.
@@ -904,6 +906,7 @@ def run_pipeline(
         print("STEP 1: RETRIEVING PAPERS")
         print("=" * 70)
 
+        stage_start = time.perf_counter()
         papers = (
             get_papers_from_retrieval(
                 query,
@@ -912,6 +915,7 @@ def run_pipeline(
             if USE_LIVE_RETRIEVAL
             else get_test_papers_stub()
         )
+        print(f"[timing] Retrieval: {time.perf_counter() - stage_start:.2f}s")
         print(
             f"Papers retrieved: {len(papers)}"
         )
@@ -964,12 +968,14 @@ def run_pipeline(
                 "STEP 3: Extracting claims..."
             )
 
+            stage_start = time.perf_counter()
             claims = extract_claims_from_text(
                 paper_id=paper["id"],
                 text=paper_text,
                 client=client
             )
 
+            print(f"[timing] Claim extraction for this paper: {time.perf_counter() - stage_start:.2f}s")
             print(
                 f"Claims extracted: {len(claims)}"
             )
@@ -1027,6 +1033,7 @@ def run_pipeline(
                     }
                 ]
 
+                stage_start = time.perf_counter()
                 verification_result = (
                     evidence_verification_agent.verify_evidence(
                         claim=claim["claim"],
@@ -1034,6 +1041,7 @@ def run_pipeline(
                     )
                 )
 
+                print(f"[timing] Evidence verification: {time.perf_counter() - stage_start:.2f}s")
                 verification_score = (
                     calculate_verification_score(
                         verification_result
@@ -1095,6 +1103,7 @@ def run_pipeline(
                 # STEP 6: SKEPTIC REVIEW
                 # =============================================
 
+                stage_start = time.perf_counter()
                 skeptic_result = (
                     skeptic_agent.analyze_evidence(
                         claim=claim["claim"],
@@ -1102,6 +1111,7 @@ def run_pipeline(
                     )
                 )
 
+                print(f"[timing] Skeptic review: {time.perf_counter() - stage_start:.2f}s")
                 skeptic_score = (
                     calculate_skeptic_score(
                         skeptic_result
@@ -1140,6 +1150,7 @@ def run_pipeline(
                 # STEP 7: EVIDENCE STRENGTH
                 # =============================================
 
+                stage_start = time.perf_counter()
                 evidence_strength_score, reasoning = (
                     score_claim(
                         claim_row=claim_row,
@@ -1162,6 +1173,7 @@ def run_pipeline(
                     )
                 )
 
+                print(f"[timing] Evidence-strength scoring: {time.perf_counter() - stage_start:.2f}s")
                 update_claim_score(
                     session=session,
                     claim_id=claim_row.id,
@@ -1250,12 +1262,14 @@ def run_pipeline(
         print("STEP 8: DETECTING CONTRADICTIONS")
         print("=" * 70)
 
+        stage_start = time.perf_counter()
         contradiction_results = (
             detect_all_contradictions(
                 session
             )
         )
 
+        print(f"[timing] Contradiction detection: {time.perf_counter() - stage_start:.2f}s")
         contradiction_rows = (
             store_contradictions(
                 session,
@@ -1401,6 +1415,7 @@ def run_pipeline(
         print()
         print("=" * 70)
         print("PIPELINE COMPLETED")
+        print(f"[timing] TOTAL pipeline runtime: {time.perf_counter() - pipeline_start:.2f}s")
         print("=" * 70)
 
         return final_result

@@ -1,0 +1,1064 @@
+/* =====================================================
+   ResearchClaimAI Login v2
+   Premium Glassmorphism UI
+===================================================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html,
+body{
+    width:100%;
+    height:100%;
+    overflow-x:hidden;
+    font-family:Inter,Segoe UI,sans-serif;
+    background:#050816;
+}
+
+#root{
+    width:100%;
+    min-height:100vh;
+}
+
+/* ==========================================
+            PAGE LAYOUT
+========================================== */
+
+.login-page{
+
+    position:relative;
+
+    height:100vh;
+
+    display:grid;
+    grid-template-columns: 65% 35%;
+    
+
+   background:
+    radial-gradient(circle at top left,
+        rgba(79,141,255,.18) 0%,
+        transparent 45%),
+    radial-gradient(circle at bottom right,
+        rgba(122,87,255,.15) 0%,
+        transparent 45%),
+   linear-gradient(135deg,#050816,#0B1024);
+
+    overflow:hidden;
+
+}
+
+/* Background Glow */
+
+.login-page::before{
+
+    content:"";
+
+    position:absolute;
+
+    width:500px;
+    height:500px;
+
+    left:-180px;
+    top:-180px;
+
+    filter:blur(90px);
+
+    opacity:.18;
+}
+
+.login-page::after{
+
+    content:"";
+
+    position:absolute;
+
+    width:500px;
+    height:500px;
+
+    right:-180px;
+    bottom:-180px;
+
+    border-radius:50%;
+
+    background:#7b4cff;
+
+    filter:blur(180px);
+
+    opacity:.12;
+
+}
+
+/* ==========================================
+            LEFT PANEL
+========================================== */
+
+.left-panel{
+
+    position:relative;
+
+    z-index:2;
+
+    padding:90px 60px;
+
+    color:#fff;
+
+    display:flex;
+
+    flex-direction:column;
+
+}
+
+.platform-badge{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    width:max-content;
+
+    padding:12px 24px;
+
+    border-radius:40px;
+
+    background:rgba(59,130,246,.15);
+
+    border:1px solid rgba(59,130,246,.35);
+
+    backdrop-filter:blur(20px);
+
+    color:#A9C8FF;
+
+    font-size:15px;
+
+    font-weight:600;
+
+}
+
+.hero-title{
+
+    margin-top:40px;
+
+    max-width:600px;
+
+    font-weight:800;
+    font-size:80px;
+    line-height:1;
+
+    letter-spacing:-2px;
+
+}
+
+.hero-title span{
+
+    color:#4F8DFF;
+
+}
+
+.hero-subtitle{
+
+    margin-top:24px;
+
+    width:90%;
+    margin-bottom:55px;
+    color:#B9C9EB;
+
+    font-size:22px;
+
+    line-height:1.7;
+
+}
+
+/* ==========================================
+          FEATURE CARDS
+========================================== */
+
+.feature-list{
+
+    margin-top:45px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:20px;
+
+}
+
+.feature-card{
+
+    display:flex;
+
+    gap:18px;
+
+    align-items:flex-start;
+
+    padding:20px;
+
+    border-radius:24px;
+
+    background:rgba(255,255,255,.05);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    backdrop-filter:blur(25px);
+
+    transition:.35s;
+
+}
+
+.feature-card:hover{
+
+    transform:translateY(-6px);
+
+    border-color:#4F8DFF;
+
+    box-shadow:
+    0 10px 25px rgba(60,130,255,.12);
+
+}
+
+.feature-icon{
+
+    width:62px;
+    height:62px;
+
+    border-radius:18px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    background:linear-gradient(135deg,#377CFF,#7A57FF);
+
+    color:white;
+
+    font-size:28px;
+
+    flex-shrink:0;
+
+}
+
+.feature-content h3{
+
+    color:white;
+
+    font-size:20px;
+
+    margin-bottom:10px;
+
+}
+
+.feature-content p{
+
+    color:#AFC6E9;
+
+    font-size:15px;
+
+    line-height:1.8;
+
+}
+
+/* ==========================================
+            AI WORKFLOW
+========================================== */
+
+.workflow-section{
+
+    margin-top:35px;
+
+}
+
+.workflow-title{
+
+    text-align:center;
+
+    color:white;
+
+    font-size:26px;
+
+    font-weight:700;
+
+    margin-bottom:35px;
+
+}
+/* ==========================================
+            AI WORKFLOW
+========================================== */
+
+.workflow-container{
+
+    position:relative;
+
+    width:100%;
+
+    height:420px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+}
+
+/* ==========================
+        AI BRAIN
+========================== */
+
+.brain{
+
+    position:absolute;
+
+    width:170px;
+
+    height:170px;
+
+    border-radius:50%;
+
+    background:linear-gradient(135deg,#3B82F6,#7C4DFF);
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    color:white;
+
+    z-index:10;
+
+    box-shadow:
+        0 0 25px rgba(59,130,246,.5),
+        0 0 80px rgba(124,77,255,.35);
+
+    animation:brainFloat 5s ease-in-out infinite;
+
+}
+
+.brain-icon{
+
+    font-size:58px;
+
+    margin-bottom:10px;
+
+}
+
+.brain h2{
+
+    font-size:28px;
+
+    font-weight:700;
+
+}
+
+.brain p{
+
+    margin-top:5px;
+
+    font-size:14px;
+
+    color:#E4EBFF;
+
+}
+
+/* ==========================
+        AGENT CARDS
+========================== */
+
+.agent-card{
+
+    position:absolute;
+
+    width:150px;
+
+    padding:18px;
+
+    border-radius:22px;
+
+    background:rgba(255,255,255,.05);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    backdrop-filter:blur(25px);
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    gap:12px;
+
+    color:white;
+
+    transition:.35s;
+
+    z-index:5;
+
+}
+
+.agent-card:hover{
+
+    transform:translateY(-6px);
+
+    border-color:#4F8DFF;
+
+    box-shadow:
+        0 12px 30px rgba(79,141,255,.25);
+
+}
+
+.agent-card svg{
+
+    font-size:30px;
+
+    color:#4F8DFF;
+
+}
+
+.agent-card h4{
+
+    font-size:16px;
+
+    font-weight:700;
+
+}
+
+.agent-card span{
+
+    text-align:center;
+
+    font-size:13px;
+
+    color:#B8C8E8;
+
+    line-height:1.6;
+
+}
+
+/* ==========================
+        POSITIONS
+========================== */
+
+.agent-top{
+
+    top:0;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+}
+
+.agent-left{
+
+    left:30px;
+
+    top:50%;
+
+    transform:translateY(-50%);
+
+}
+
+.agent-right{
+
+    right:30px;
+
+    top:50%;
+
+    transform:translateY(-50%);
+
+}
+
+.agent-bottom{
+
+    bottom:0;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+}
+
+/* ==========================
+      CONNECTOR LINES
+========================== */
+
+.line{
+
+    position:absolute;
+
+    background:linear-gradient(#4F8DFF,#7C4DFF);
+
+    opacity:.45;
+
+    z-index:1;
+
+}
+
+.line-vertical{
+
+    width:2px;
+
+    height:90px;
+
+}
+
+.line-horizontal{
+
+    width:90px;
+
+    height:2px;
+
+}
+
+.line-top{
+
+    top:80px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+}
+
+.line-bottom{
+
+    bottom:80px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+}
+
+.line-left{
+
+    left:165px;
+
+    top:50%;
+
+    transform:translateY(-50%);
+
+}
+
+.line-right{
+
+    right:165px;
+
+    top:50%;
+
+    transform:translateY(-50%);
+
+}
+
+/* ==========================
+     FLOATING PAPERS
+========================== */
+
+.paper{
+
+    position:absolute;
+
+    padding:12px 18px;
+
+    border-radius:16px;
+
+    background:rgba(255,255,255,.05);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    backdrop-filter:blur(18px);
+
+    color:white;
+
+    font-size:13px;
+
+    display:flex;
+
+    align-items:center;
+
+    gap:8px;
+
+    animation:paperFloat 6s ease-in-out infinite;
+
+}
+
+.paper svg{
+
+    color:#4F8DFF;
+
+}
+
+.paper-1{
+
+    left:20px;
+
+    top:40px;
+
+}
+
+.paper-2{
+
+    right:20px;
+
+    top:80px;
+
+    animation-delay:2s;
+
+}
+
+.paper-3{
+
+    left:70px;
+
+    bottom:30px;
+
+    animation-delay:4s;
+
+}
+
+/* ==========================
+        ANIMATIONS
+========================== */
+
+@keyframes brainFloat{
+
+    0%,100%{
+
+        transform:translateY(0);
+
+    }
+
+    50%{
+
+        transform:translateY(-12px);
+
+    }
+
+}
+
+@keyframes paperFloat{
+
+    0%,100%{
+
+        transform:translateY(0);
+
+    }
+
+    50%{
+
+        transform:translateY(-10px);
+
+    }
+
+}
+/* =====================================================
+                    RIGHT PANEL
+===================================================== */
+
+.right-panel{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    padding:40px;
+}
+
+/* =====================================================
+                    LOGIN CARD
+===================================================== */
+
+.login-card{
+
+    width:100%;
+    max-width:760px;
+
+    padding:42px;
+
+    border-radius:30px;
+
+    background:rgba(12,20,45,.75);
+
+    backdrop-filter:blur(30px);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    box-shadow:
+        0 25px 60px rgba(0,0,0,.45),
+        0 0 35px rgba(59,130,246,.15);
+
+}
+
+.login-logo{
+
+    width:90px;
+    height:90px;
+
+    margin:auto;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    border-radius:50%;
+
+    background:linear-gradient(135deg,#3B82F6,#7C4DFF);
+
+    color:white;
+
+    font-size:38px;
+
+    box-shadow:
+        0 0 30px rgba(59,130,246,.45);
+
+}
+
+.login-card h2{
+
+    margin-top:25px;
+
+    text-align:center;
+
+    color:white;
+
+    font-size:34px;
+
+    font-weight:700;
+
+}
+
+.login-subtitle{
+
+    margin-top:12px;
+
+    text-align:center;
+
+    color:#B8C8E8;
+
+    line-height:1.7;
+
+    font-size:15px;
+
+}
+
+/* =====================================================
+                    INPUTS
+===================================================== */
+
+.input-group{
+
+    position:relative;
+
+    margin-top:25px;
+
+}
+
+.input-icon{
+
+    position:absolute;
+
+    top:18px;
+
+    left:18px;
+
+    color:#6EA8FF;
+
+    font-size:18px;
+
+}
+
+.input-group input{
+
+    width:100%;
+
+    padding:17px 18px 17px 52px;
+
+    border-radius:15px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    background:#111D3C;
+
+    color:white;
+
+    font-size:15px;
+
+    outline:none;
+
+    transition:.3s;
+
+}
+
+.input-group input::placeholder{
+
+    color:#93A6C8;
+
+}
+
+.input-group input:focus{
+
+    border-color:#4F8DFF;
+
+    box-shadow:
+        0 0 18px rgba(79,141,255,.25);
+
+}
+
+/* =====================================================
+                    OPTIONS
+===================================================== */
+
+.login-options{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    margin-top:18px;
+
+    color:#BFD1F3;
+
+    font-size:14px;
+
+}
+
+.login-options a{
+
+    color:#72AEFF;
+
+    text-decoration:none;
+
+}
+
+.login-options a:hover{
+
+    text-decoration:underline;
+
+}
+
+/* =====================================================
+                    BUTTONS
+===================================================== */
+
+.login-btn{
+
+    width:100%;
+
+    margin-top:28px;
+
+    padding:17px;
+
+    border:none;
+
+    border-radius:16px;
+
+    background:linear-gradient(135deg,#3B82F6,#7C4DFF);
+
+    color:white;
+
+    font-size:17px;
+
+    font-weight:700;
+
+    cursor:pointer;
+
+    transition:.35s;
+
+}
+
+.login-btn:hover{
+
+    transform:translateY(-4px);
+
+    box-shadow:
+        0 15px 30px rgba(59,130,246,.35);
+
+}
+
+.divider{
+
+    margin:28px 0;
+
+    position:relative;
+
+    text-align:center;
+
+    color:#A7B9DB;
+
+    font-size:14px;
+
+}
+
+.divider::before,
+.divider::after{
+
+    content:"";
+
+    position:absolute;
+
+    top:50%;
+
+    width:42%;
+
+    height:1px;
+
+    background:rgba(255,255,255,.08);
+
+}
+
+.divider::before{
+
+    left:0;
+
+}
+
+.divider::after{
+
+    right:0;
+
+}
+
+.google-btn{
+
+    width:100%;
+
+    padding:16px;
+
+    border-radius:16px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    background:rgba(255,255,255,.05);
+
+    color:white;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:12px;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+.google-btn:hover{
+
+    background:rgba(255,255,255,.09);
+
+    border-color:#4F8DFF;
+
+}
+
+.signup-text{
+
+    margin-top:28px;
+
+    text-align:center;
+
+    color:#B8C8E8;
+
+}
+
+.signup-text span{
+
+    color:#72AEFF;
+
+    cursor:pointer;
+
+    font-weight:600;
+
+}
+
+/* =====================================================
+                    RESPONSIVE
+===================================================== */
+
+@media(max-width:1200px){
+
+    .login-page{
+
+        grid-template-columns:1fr;
+
+    }
+
+    .left-panel{
+
+        display:none;
+
+    }
+
+    .right-panel{
+
+        padding:30px;
+        align-items:center;
+
+    }
+
+}
+
+@media(max-width:600px){
+
+    .login-card{
+
+        padding:30px 24px;
+
+    }
+
+    .login-card h2{
+
+        font-size:28px;
+
+    }
+
+    .login-logo{
+
+        width:75px;
+        height:75px;
+
+        font-size:32px;
+
+    }
+
+}
+
+/* =====================================================
+                    SCROLLBAR
+===================================================== */
+
+::-webkit-scrollbar{
+
+    width:8px;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:#356DFF;
+
+    border-radius:10px;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:#081224;
+
+}

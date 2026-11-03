@@ -5072,6 +5072,7 @@ def extract_claims_from_text(
                     )
 
 
+
             except Exception as error:
 
                 print(
@@ -5081,14 +5082,30 @@ def extract_claims_from_text(
                     f"{error}"
                 )
 
+                error_code = getattr(error, "code", None)
+                error_text = str(error).upper()
 
-                if attempt < (
-                    MAX_RETRIES - 1
+                # Do not retry when the API quota is exhausted.
+                if (
+                    error_code == 429
+                    or "RESOURCE_EXHAUSTED" in error_text
                 ):
-
-                    time.sleep(
-                        2
+                    print(
+                        "[extract] Gemini quota exhausted; "
+                        "skipping this context."
                     )
+                    break
+
+                # call_with_retry already handles transient 503 errors.
+                if (
+                    error_code == 503
+                    or "UNAVAILABLE" in error_text
+                ):
+                    break
+
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(2)
+
 
 
         # ====================================================
@@ -5187,271 +5204,158 @@ def extract_claims_from_text(
                         f"{error}"
                     )
 
-                except Exception as error:
 
+
+                except Exception as error:
                     print(
                         f"[extract] paper {paper_id}: "
-                        f"recovery error on attempt "
+                        f"Gemini recovery error on attempt "
                         f"{recovery_attempt + 1}/"
                         f"{MAX_RECOVERY_ATTEMPTS}: "
                         f"{error}"
                     )
 
+                    error_code = getattr(error, "code", None)
+                    error_text = str(error).upper()
+
+                    if (
+                        error_code == 429
+                        or "RESOURCE_EXHAUSTED" in error_text
+                    ):
+                        print(
+                            "[extract] Gemini quota exhausted; "
+                            "skipping recovery request."
+                        )
+                        break
+
+                    if (
+                        error_code == 503
+                        or "UNAVAILABLE" in error_text
+                    ):
+                        break
+
+                    if recovery_attempt < MAX_RECOVERY_ATTEMPTS - 1:
+                        time.sleep(2)
+
         # ====================================================
         # REQUIRE JSON ARRAY
         # ====================================================
 
-        if not isinstance(
-            parsed,
-            list
-        ):
-
+        if not isinstance(parsed, list):
             print(
                 f"[extract] paper {paper_id}: "
                 "Gemini did not return a JSON array"
             )
-
             continue
-
 
         # ====================================================
         # VALIDATE ALL CLAIMS
-        #
-        # We validate FIRST and apply the 8-claim limit AFTER
-        # validation so invalid claims don't consume the quota.
         # ====================================================
 
         valid_claims = []
-
         invalid_count = 0
 
-
         for raw_claim in parsed:
-
-            raw_claim = _normalize_gemini_claim_schema(
-                raw_claim
-            )
+            raw_claim = _normalize_gemini_claim_schema(raw_claim)
 
             if isinstance(raw_claim, dict):
-                raw_claim[
-                    "_validation_context"
-                ] = context_text
+                raw_claim["_validation_context"] = context_text
 
-                # Recovery responses can describe a valid result but attach
-                # a source sentence that omits the benchmark/model context.
-                # Before strict validation, replace that generated evidence
-                # only when the ORIGINAL PDF context contains an explicit
-                # model + benchmark + value relationship.
+                # Reconstruct evidence only when the original PDF context
+                # explicitly supports the model, benchmark, and value.
                 _reconstruct_recovery_evidence(
                     raw_claim,
                     context_text,
                     full_text=text,
                 )
 
-                # Normalize malformed PDF whitespace-table evidence into the
-                # same explicit Header:/Row: representation before strict
-                # validation. This preserves the exact model/value mapping
-                # while making downstream verification consistent.
-                _normalize_malformed_whitespace_table_evidence(
-                    raw_claim
-                )
+                # Normalize malformed PDF whitespace-table evidence.
+                _normalize_malformed_whitespace_table_evidence(raw_claim)
 
-            # ----------------------------------------------------
-            # Gemini should already return one benchmark per claim.
-            # When it violates that rule for a table, recover only
-            # from explicit Header/Row column mappings.
-            # ----------------------------------------------------
+            # If Gemini returned a compound table claim, split it only when
+            # explicit header/row evidence supports the column mapping.
+            claim_candidates = [raw_claim]
 
-            claim_candidates = [
-                raw_claim
-            ]
-
-            if not _claim_has_single_benchmark(
-                raw_claim
-            ):
-
-                split_claims = _split_compound_table_claim(
-                    raw_claim
-                )
-
+            if not _claim_has_single_benchmark(raw_claim):
+                split_claims = _split_compound_table_claim(raw_claim)
                 if split_claims:
-
                     claim_candidates = split_claims
-
                     print(
                         f"[extract] paper {paper_id}: "
                         "split compound table claim into "
                         f"{len(split_claims)} single-benchmark claim(s)"
                     )
 
-
             for claim in claim_candidates:
+                _normalize_malformed_whitespace_table_evidence(claim)
 
-                # Re-run the canonicalizer after any benchmark-column splitting
-                # so every surviving candidate has the same evidence contract.
-                _normalize_malformed_whitespace_table_evidence(
-                    claim
-                )
-
-                if not _validate_claim(
-                    claim
-                ):
-
+                if not _validate_claim(claim):
                     invalid_count += 1
+                    model_name = _extract_model_name_for_validation(claim)
 
-                    model_name = _extract_model_name_for_validation(
-                        claim
-                    )
-
-                    if model_name and _is_ambiguous_model_identity(
-                        model_name
-                    ):
+                    if model_name and _is_ambiguous_model_identity(model_name):
                         print(
                             f"[extract] paper {paper_id}: "
-                            f"dropped ambiguous model identity "
-                            f"'{model_name}'"
+                            f"dropped ambiguous model identity '{model_name}'"
                         )
-
                     continue
 
+                claim.pop("_validation_context", None)
+                valid_claims.append(claim)
 
-                claim.pop(
-                    "_validation_context",
-                    None
-                )
-
-                valid_claims.append(
-                    claim
-                )
-
-
-        # ----------------------------------------------------
-        # Enforce maximum VALID claims
-        # ----------------------------------------------------
-
-        if len(
-            valid_claims
-        ) > MAX_CLAIMS_PER_RESPONSE:
-
+        # Enforce maximum VALID claims.
+        if len(valid_claims) > MAX_CLAIMS_PER_RESPONSE:
             print(
-                f"[extract] paper {paper_id}: "
-                f"Gemini produced "
-                f"{len(valid_claims)} valid claims; "
-                f"keeping first "
+                f"[extract] paper {paper_id}: Gemini produced "
+                f"{len(valid_claims)} valid claims; keeping first "
                 f"{MAX_CLAIMS_PER_RESPONSE}"
             )
+            valid_claims = valid_claims[:MAX_CLAIMS_PER_RESPONSE]
 
-
-            valid_claims = valid_claims[
-                :MAX_CLAIMS_PER_RESPONSE
-            ]
-
-
-        # ====================================================
-        # ATTACH PIPELINE METADATA
-        # ====================================================
-
+        # Attach pipeline metadata.
         for claim in valid_claims:
-
-            # ------------------------------------------------
-            # IMPORTANT:
             # The pipeline owns paper identity.
-            # ------------------------------------------------
+            claim["paper_id"] = paper_id
+            claim["chunk_index"] = start_index
+            claim["context_end_index"] = end_index
 
-            claim[
-                "paper_id"
-            ] = paper_id
-
-
-            # ------------------------------------------------
-            # Traceability
-            # ------------------------------------------------
-
-            claim[
-                "chunk_index"
-            ] = start_index
-
-
-            claim[
-                "context_end_index"
-            ] = end_index
-
-
-        # ----------------------------------------------------
-        # Diagnostics
-        # ----------------------------------------------------
-
+        # Diagnostics for this context group.
         if invalid_count:
-
             print(
                 f"[extract] paper {paper_id}: "
                 f"dropped {invalid_count} invalid claim(s)"
             )
 
-
         if valid_claims:
-
             print(
                 f"[extract] paper {paper_id}: "
                 f"accepted {len(valid_claims)} claim(s) "
-                f"from context group "
-                f"{group_index}"
+                f"from context group {group_index}"
             )
-
         else:
-
             print(
                 f"[extract] paper {paper_id}: "
-                f"no valid claims from context group "
-                f"{group_index}"
+                f"no valid claims from context group {group_index}"
             )
 
+        all_claims.extend(valid_claims)
 
-        all_claims.extend(
-            valid_claims
-        )
-
-
-        # ----------------------------------------------------
-        # Rate-limit delay
-        # ----------------------------------------------------
-
-        if (
-            SECONDS_BETWEEN_CALLS
-            > 0
-        ):
-
-            time.sleep(
-                SECONDS_BETWEEN_CALLS
-            )
-
+        # Rate-limit delay between context groups.
+        if SECONDS_BETWEEN_CALLS > 0:
+            time.sleep(SECONDS_BETWEEN_CALLS)
 
     # ========================================================
     # DEDUPLICATE
     # ========================================================
 
-    before = len(
-        all_claims
-    )
-
-
-    all_claims = _dedupe_claims(
-        all_claims
-    )
-
-
-    after = len(
-        all_claims
-    )
-
+    before = len(all_claims)
+    all_claims = _dedupe_claims(all_claims)
+    after = len(all_claims)
 
     if before != after:
-
         print(
-            f"[extract] paper {paper_id}: "
-            f"deduped {before} -> {after}"
+            f"[extract] paper {paper_id}: deduped {before} -> {after}"
         )
-
 
     # ========================================================
     # FINAL RESULT
@@ -5459,9 +5363,7 @@ def extract_claims_from_text(
 
     print(
         f"[extract] paper {paper_id}: "
-        f"FINAL VALID CLAIMS = "
-        f"{len(all_claims)}"
+        f"FINAL VALID CLAIMS = {len(all_claims)}"
     )
-
 
     return all_claims

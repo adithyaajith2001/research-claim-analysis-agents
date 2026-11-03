@@ -50,7 +50,7 @@ DOMAIN_SEARCH_KEYWORDS = [
 MODEL_NAME = "gemini-flash-lite-latest"
 MAX_OUTPUT_TOKENS_EXTRACTION = 4096
 MAX_OUTPUT_TOKENS_SCORING = 512
-SECONDS_BETWEEN_CALLS = 15  # rate-limit spacing, tune down if your quota allows
+SECONDS_BETWEEN_CALLS = 2  # rate-limit spacing, tune down if your quota allows
 MAX_RETRIES = 3
 
 # --- Contradiction detection -------------------------------------------------

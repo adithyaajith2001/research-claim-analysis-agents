@@ -1,0 +1,37 @@
+{
+  "Climate Change": {
+    "title": "Climate Change Increases Air Pollution",
+    "confidence": 92,
+    "papers": 52,
+    "claims": 18,
+    "status": "Highly Supported",
+    "summary": "Most peer-reviewed studies indicate that climate change contributes to increasing air pollution through rising temperatures, wildfire frequency, atmospheric stagnation and altered weather patterns."
+  },
+
+  "Artificial Intelligence in Healthcare": {
+    "title": "Artificial Intelligence Improves Healthcare",
+    "confidence": 95,
+    "papers": 84,
+    "claims": 34,
+    "status": "Highly Supported",
+    "summary": "Recent research shows that Artificial Intelligence improves disease diagnosis, medical imaging, patient monitoring, personalized treatment and hospital management."
+  },
+
+  "Blockchain": {
+    "title": "Blockchain Improves Supply Chain Transparency",
+    "confidence": 88,
+    "papers": 61,
+    "claims": 20,
+    "status": "Supported",
+    "summary": "Research demonstrates that blockchain enhances traceability, transparency, product authenticity and secure information sharing across supply chains."
+  },
+
+  "Machine Learning": {
+    "title": "Machine Learning Improves Prediction Accuracy",
+    "confidence": 91,
+    "papers": 73,
+    "claims": 28,
+    "status": "Highly Supported",
+    "summary": "Machine Learning models significantly improve prediction accuracy in healthcare, finance, agriculture and industrial automation."
+  }
+}

@@ -1,0 +1,1260 @@
+/* Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+body{
+    background:#050816;
+    overflow-x:hidden;
+    overflow-y:auto;
+}
+
+/* ===========================================================
+                    FEATURE GRID
+=========================================================== */
+
+.feature-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:22px;
+
+    margin-top:10px;
+
+}
+
+.feature-card{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    padding:22px;
+
+    border-radius:18px;
+
+    background:rgba(255,255,255,.05);
+
+    backdrop-filter:blur(20px);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    transition:all .35s ease;
+
+}
+
+.feature-card:hover{
+
+    transform:translateY(-8px);
+
+    border-color:#4DA6FF;
+
+    box-shadow:0 0 30px rgba(77,166,255,.35);
+
+}
+
+.feature-card svg{
+
+    font-size:46px;
+
+    color:#4DA6FF;
+
+    margin-bottom:12px;
+
+    transition:.3s;
+
+}
+.feature-card h3{
+
+    font-size:17px;
+
+    margin-bottom:4px;
+
+}
+
+.feature-card p{
+
+    color:#9FB3C8;
+
+    font-size:13px;
+
+    line-height:20px;
+
+}
+
+/* ===========================================================
+                    HERO VISUAL
+=========================================================== */
+
+.hero-visual{
+
+    margin-top:60px;
+
+    position:relative;
+
+    height:240px;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+}
+
+.ai-core{
+
+    position:relative;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+}
+
+.core-circle{
+
+    width:130px;
+
+    height:130px;
+
+    border-radius:50%;
+
+    background:linear-gradient(135deg,#2463ff,#6d5bff);
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    font-size:46px;
+
+    color:white;
+
+    z-index:5;
+
+    box-shadow:0 0 40px rgba(77,166,255,.55);
+
+}
+
+.core-ring{
+
+    position:absolute;
+
+    width:170px;
+
+    height:170px;
+
+    border-radius:50%;
+
+    border:2px solid rgba(77,166,255,.25);
+
+    animation:pulseRing 3s infinite;
+
+}
+
+.core-ring.delay{
+
+    animation-delay:1.5s;
+
+}
+
+@keyframes pulseRing{
+
+0%{
+
+transform:scale(.8);
+
+opacity:.7;
+
+}
+
+100%{
+
+transform:scale(1.45);
+
+opacity:0;
+
+}
+
+}
+
+/* ===========================================================
+                    FLOATING PAPERS
+=========================================================== */
+
+.paper{
+
+    position:absolute;
+
+    padding:12px 18px;
+
+    background:#111C34;
+
+    border-radius:12px;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    color:white;
+
+    font-size:14px;
+
+    box-shadow:0 10px 25px rgba(0,0,0,.25);
+
+    animation:floatPaper 5s ease-in-out infinite;
+
+}
+
+.paper1{
+
+    left:10%;
+
+    top:20px;
+
+}
+
+.paper2{
+
+    right:12%;
+
+    top:50px;
+
+    animation-delay:1.2s;
+
+}
+
+.paper3{
+
+    left:22%;
+
+    bottom:10px;
+
+    animation-delay:2.4s;
+
+}
+
+@keyframes floatPaper{
+
+0%,100%{
+
+transform:translateY(0px);
+
+}
+
+50%{
+
+transform:translateY(-15px);
+
+}
+
+}
+
+/* ===========================================================
+                    AI PIPELINE
+=========================================================== */
+
+.pipeline{
+
+    display:flex;
+
+    justify-content:center;
+
+    gap:18px;
+
+    margin-top:35px;
+
+    flex-wrap:wrap;
+
+}
+
+.pipeline-card{
+
+    min-width:110px;
+
+    padding:16px 22px;
+
+    border-radius:15px;
+
+    background:#101C36;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    color:white;
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    gap:8px;
+
+    transition:.35s;
+
+}
+
+.pipeline-card svg{
+
+    font-size:20px;
+
+    color:#7AB3FF;
+
+}
+
+.pipeline-card p{
+
+    font-size:13px;
+
+}
+
+.pipeline-card:hover{
+
+    transform:translateY(-6px);
+
+    box-shadow:0 0 25px rgba(77,166,255,.25);
+
+}
+
+.pipeline-card.active{
+
+    background:linear-gradient(135deg,#2463ff,#6d5bff);
+
+    box-shadow:0 0 25px rgba(77,166,255,.45);
+
+}
+/* ===========================
+      PAGE
+=========================== */
+
+.login-page{
+
+    width:100%;
+
+    min-height:100vh;
+
+    display:grid;
+    grid-template-columns:58% 42%;
+
+    background:linear-gradient(
+        135deg,
+        #050816 0%,
+        #09142a 45%,
+        #0b132b 100%
+    );
+
+    position:relative;
+}
+
+/* ===========================
+      BACKGROUND GLOW
+=========================== */
+
+.background-glow{
+    position:absolute;
+    border-radius:50%;
+    filter:blur(120px);
+    opacity:.25;
+}
+
+.glow1{
+    width:350px;
+    height:350px;
+
+    background:#2D6BFF;
+
+    top:-80px;
+    left:-80px;
+}
+
+.glow2{
+
+    width:280px;
+    height:280px;
+
+    background:#7A5CFF;
+
+    right:150px;
+    bottom:-100px;
+}
+
+/* ===========================
+      LEFT PANEL
+=========================== */
+
+.hero-section{
+
+    padding:70px;
+
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+
+    color:white;
+
+}
+
+.hero-badge{
+
+    display:inline-block;
+
+    width:max-content;
+
+    padding:10px 18px;
+
+    border-radius:30px;
+
+    background:rgba(52,90,255,.18);
+
+    border:1px solid rgba(120,160,255,.25);
+
+    color:#8fb3ff;
+
+    font-size:14px;
+
+    margin-bottom:25px;
+}
+
+.hero-section h1{
+
+    font-size:58px;
+
+    font-weight:800;
+
+    line-height:1.1;
+
+    margin-bottom:20px;
+
+}
+
+.hero-section span{
+
+    color:#4DA6FF;
+
+}
+
+.hero-description{
+
+    width:85%;
+
+    color:#b8c4df;
+
+    font-size:18px;
+
+    line-height:32px;
+
+    margin-bottom:45px;
+
+}
+/* ===========================================================
+                    GOOGLE FONT
+=========================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:'Poppins',sans-serif;
+}
+
+html,
+body{
+    width:100%;
+    height:100%;
+}
+
+body{
+    background:#050816;
+    overflow-x:hidden;
+    overflow-y:auto;
+}
+
+/* ===========================================================
+                    PAGE LAYOUT
+=========================================================== */
+
+.login-page{
+
+    width:100%;
+    min-height:100vh;
+    display:grid;
+    grid-template-columns:60% 40%;
+
+    background:
+    radial-gradient(circle at top left,#214BFF33,transparent 35%),
+    radial-gradient(circle at bottom right,#6D5BFF33,transparent 35%),
+    linear-gradient(135deg,#040816,#071225,#0A1733);
+
+    position:relative;
+
+    overflow-x:hidden;
+overflow-y:auto;
+}
+
+/* ===========================================================
+                    BACKGROUND
+=========================================================== */
+
+.background-glow{
+
+    position:absolute;
+
+    border-radius:50%;
+
+    filter:blur(120px);
+
+    opacity:.35;
+
+    z-index:0;
+
+}
+
+.glow1{
+
+    width:420px;
+
+    height:420px;
+
+    left:-120px;
+
+    top:-120px;
+
+    background:#2D6BFF;
+
+}
+
+.glow2{
+
+    width:350px;
+
+    height:350px;
+
+    right:-80px;
+
+    bottom:-120px;
+
+    background:#705CFF;
+
+}
+
+/* ===========================================================
+                    HERO SECTION
+=========================================================== */
+
+.hero-section{
+
+    position:relative;
+
+    z-index:2;
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    padding:70px;
+
+    color:white;
+
+}
+
+.hero-badge{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    gap:10px;
+
+    width:max-content;
+
+    padding:10px 22px;
+
+    border-radius:40px;
+
+    background:rgba(50,90,255,.15);
+
+    border:1px solid rgba(120,170,255,.25);
+
+    color:#8DB8FF;
+
+    font-size:14px;
+
+    font-weight:500;
+
+    margin-bottom:25px;
+
+}
+
+.hero-section h1{
+
+    font-size:64px;
+
+    font-weight:800;
+
+    line-height:1.1;
+
+    margin-bottom:18px;
+
+    letter-spacing:-2px;
+
+}
+
+.hero-section h1 span{
+
+    color:#4DA6FF;
+
+}
+
+.hero-description{
+
+    width:85%;
+
+    color:#B7C6DD;
+
+    font-size:18px;
+
+    line-height:32px;
+
+    margin-bottom:45px;
+
+}
+
+/* ===========================================================
+                    DIVIDER
+=========================================================== */
+
+.section-title{
+
+    color:#76A8FF;
+
+    font-size:18px;
+
+    font-weight:600;
+
+    margin-bottom:20px;
+
+}
+/* ===========================
+      FEATURE GRID
+=========================== */
+
+.feature-grid{
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:22px;
+
+}
+.feature-card{
+
+    display:flex;
+
+    flex-direction:column;
+
+    justify-content:center;
+
+    align-items:center;
+
+    text-align:center;
+
+    gap:15px;
+
+    padding:22px;
+    min-height:190px;
+
+    border-radius:18px;
+
+    background:rgba(255,255,255,.05);
+
+    backdrop-filter:blur(18px);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    transition:.35s;
+
+}
+
+
+.feature-card:hover{
+
+    transform:translateY(-5px);
+
+    border-color:#4DA6FF;
+
+    box-shadow:0 0 30px rgba(77,166,255,.25);
+
+}
+
+.feature-card svg{
+
+    font-size:56px;
+
+    color:#4DA6FF;
+
+}
+.feature-card h3{
+
+    font-size:20px;
+
+    font-weight:700;
+
+    color:#1f2937;
+
+}
+
+
+.feature-card p{
+
+    font-size:15px;
+
+    color:#94A3B8;
+
+    line-height:1.6;
+
+}
+
+/* ===========================
+      WORKFLOW
+=========================== */
+
+.workflow{
+
+    margin-top:55px;
+
+}
+
+.workflow-title{
+
+    color:#4DA6FF;
+
+    margin-bottom:20px;
+
+    font-weight:600;
+
+}
+
+.workflow-flow{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:18px;
+
+}
+
+.workflow-node{
+
+    padding:15px 24px;
+
+    border-radius:14px;
+
+    background:#111C34;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    color:white;
+
+    transition:.3s;
+
+}
+
+.workflow-node.active{
+
+    background:#2463ff;
+
+    box-shadow:0 0 25px rgba(36,99,255,.55);
+
+}
+.feature-card:hover svg{
+
+    transform:scale(1.15);
+
+}
+/* =====================================
+            HERO VISUAL
+===================================== */
+
+.hero-visual{
+
+margin-top:60px;
+
+position:relative;
+
+height:260px;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+}
+
+.ai-core{
+
+position:relative;
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+}
+
+.core-circle{
+
+width:130px;
+
+height:130px;
+
+border-radius:50%;
+
+background:linear-gradient(135deg,#2463ff,#6d5bff);
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+font-size:46px;
+
+color:white;
+
+z-index:5;
+
+box-shadow:0 0 45px rgba(77,166,255,.55);
+
+}
+
+.core-ring{
+
+position:absolute;
+
+width:170px;
+
+height:170px;
+
+border:2px solid rgba(77,166,255,.25);
+
+border-radius:50%;
+
+animation:pulseRing 3s infinite;
+
+}
+
+.core-ring.delay{
+
+animation-delay:1.5s;
+
+}
+
+@keyframes pulseRing{
+
+0%{
+
+transform:scale(.8);
+
+opacity:.7;
+
+}
+
+100%{
+
+transform:scale(1.4);
+
+opacity:0;
+
+}
+
+}
+
+/* Papers */
+
+.paper{
+
+position:absolute;
+
+padding:12px 18px;
+
+background:#111C34;
+
+border-radius:12px;
+
+border:1px solid rgba(255,255,255,.08);
+
+color:white;
+
+font-size:14px;
+
+animation:floatPaper 5s ease-in-out infinite;
+
+}
+
+.paper1{
+
+left:10%;
+
+top:30px;
+
+}
+
+.paper2{
+
+right:12%;
+
+top:60px;
+
+animation-delay:1.2s;
+
+}
+
+.paper3{
+
+bottom:20px;
+
+left:22%;
+
+animation-delay:2.4s;
+
+}
+
+@keyframes floatPaper{
+
+0%,100%{
+
+transform:translateY(0);
+
+}
+
+50%{
+
+transform:translateY(-14px);
+
+}
+
+}
+
+/* Pipeline */
+
+.pipeline{
+
+display:flex;
+
+justify-content:center;
+
+gap:18px;
+
+margin-top:35px;
+
+flex-wrap:wrap;
+
+}
+
+.pipeline-card{
+
+padding:15px 22px;
+
+border-radius:15px;
+
+background:#101C36;
+
+border:1px solid rgba(255,255,255,.08);
+
+color:white;
+
+transition:.3s;
+
+}
+
+.pipeline-card:hover{
+
+transform:translateY(-5px);
+
+box-shadow:0 0 25px rgba(77,166,255,.3);
+
+}
+
+.pipeline-card.active{
+
+background:linear-gradient(90deg,#2463ff,#6d5bff);
+
+}
+/* ===========================
+      RIGHT SIDE
+=========================== */
+
+.login-container{
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:flex-start;
+
+    padding-top:120px;
+
+}
+
+.login-card{
+
+    width:420px;
+
+    padding:45px;
+
+    border-radius:28px;
+
+    background:rgba(255,255,255,.05);
+
+    backdrop-filter:blur(25px);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    color:white;
+
+    box-shadow:0 20px 50px rgba(0,0,0,.35);
+
+}
+
+.login-card h2{
+
+color:white;
+
+font-size:38px;
+
+font-weight:700;
+
+margin-bottom:12px;
+
+}
+
+.login-card p{
+
+    color:#B4C2D7;
+
+    margin-bottom:35px;
+
+}
+
+/* ===========================
+      INPUT
+=========================== */
+
+.input-group{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:15px;
+
+    padding:16px 20px;
+
+    border-radius:14px;
+
+    margin-bottom:20px;
+
+    background:#101C36;
+
+    border:1px solid transparent;
+
+    transition:.3s;
+
+}
+
+.input-group:focus-within{
+
+    border-color:#4DA6FF;
+
+    box-shadow:0 0 18px rgba(77,166,255,.35);
+
+}
+
+.input-group svg{
+
+    color:#6EA8FF;
+
+}
+
+.input-group input{
+
+    flex:1;
+
+    background:none;
+
+    border:none;
+
+    outline:none;
+
+    color:white;
+
+    font-size:15px;
+
+}
+
+.input-group input::placeholder{
+
+    color:#8398B5;
+
+}
+
+/* ===========================
+      OPTIONS
+=========================== */
+
+.login-options{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    margin-bottom:28px;
+
+    font-size:14px;
+
+}
+
+.login-options a{
+
+    color:#6EA8FF;
+
+    text-decoration:none;
+
+}
+
+/* ===========================
+      BUTTONS
+=========================== */
+
+.login-btn{
+
+    width:100%;
+
+    padding:16px;
+
+    border:none;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+    font-size:17px;
+
+    font-weight:600;
+
+    color:white;
+
+    background:linear-gradient(90deg,#2463ff,#6d5bff);
+
+    transition:.35s;
+
+}
+
+.login-btn:hover{
+
+    transform:translateY(-2px);
+
+    box-shadow:0 0 25px rgba(77,166,255,.45);
+
+}
+
+.google-btn{
+
+    width:100%;
+
+    margin-top:18px;
+
+    padding:16px;
+
+    border-radius:14px;
+
+    cursor:pointer;
+
+    border:1px solid rgba(255,255,255,.12);
+
+    background:rgba(255,255,255,.05);
+
+    color:white;
+
+    display:flex;
+
+    justify-content:center;
+
+    align-items:center;
+
+    gap:12px;
+
+    transition:.35s;
+
+}
+
+.google-btn:hover{
+
+    background:rgba(255,255,255,.09);
+
+}
+
+/* ===========================
+      RESPONSIVE
+=========================== */
+
+@media(max-width:1000px){
+
+.login-page{
+
+grid-template-columns:1fr;
+
+overflow-y:auto;
+
+}
+
+.hero-section{
+
+padding:45px;
+
+}
+
+.login-container{
+
+padding:40px;
+
+}
+
+.login-card{
+
+width:100%;
+
+max-width:450px;
+
+}
+
+.feature-grid{
+
+grid-template-columns:1fr;
+
+}
+
+.hero-description{
+
+width:100%;
+
+}
+
+}
