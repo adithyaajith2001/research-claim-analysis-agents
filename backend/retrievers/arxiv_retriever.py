@@ -55,21 +55,29 @@ os.makedirs(
 
 def search_arxiv(
     query,
-    max_results=5
+    max_results=5,
+    max_retries=4,
 ):
     """
-    Search arXiv and return the raw requests.Response object.
+    Search arXiv using multiple API endpoints.
+
+    Retries temporary failures and rate limits before moving
+    to the next endpoint. Returns the raw Response object
+    on success, otherwise None.
     """
+    import time
 
     try:
         max_results = int(max_results)
     except (ValueError, TypeError):
         max_results = 5
 
-    max_results = max(
-        1,
-        min(max_results, 20)
-    )
+    max_results = max(1, min(max_results, 20))
+
+    try:
+        max_retries = max(1, int(max_retries))
+    except (ValueError, TypeError):
+        max_retries = 4
 
     params = {
         "search_query": f"all:{query}",
@@ -79,8 +87,7 @@ def search_arxiv(
         "sortOrder": "descending",
     }
 
-    print()
-    print("=" * 70)
+    print("\n" + "=" * 70)
     print("ARXIV SEARCH")
     print("=" * 70)
     print(f"Query: {query}")
@@ -89,108 +96,111 @@ def search_arxiv(
     last_error = None
 
     for api_url in ARXIV_API_URLS:
-
-        print()
-        print("Trying endpoint:")
+        print("\nTrying endpoint:")
         print(api_url)
 
-        try:
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(
+                    api_url,
+                    params=params,
+                    timeout=30,
+                    verify=False,
+                    headers={
+                        "User-Agent": "ResearchClaimAI/1.0"
+                    },
+                )
 
-            response = requests.get(
-                api_url,
-                params=params,
-                timeout=30,
-                verify=False,
-                headers={
-                    "User-Agent":
-                        "ResearchClaimAI/1.0"
-                },
-            )
+                print("HTTP status:", response.status_code)
 
-            print(
-                "HTTP status:",
-                response.status_code
-            )
+                if response.status_code == 200:
+                    print("[success] arXiv request successful.")
+                    print("=" * 70)
+                    return response
 
-            if response.status_code == 200:
+                if response.status_code == 429:
+                    retry_after = response.headers.get("Retry-After")
+
+                    try:
+                        wait = (
+                            float(retry_after)
+                            if retry_after
+                            else (2 ** attempt) * 3
+                        )
+                    except (ValueError, TypeError):
+                        wait = (2 ** attempt) * 3
+
+                    last_error = requests.HTTPError(
+                        "arXiv rate limit exceeded (HTTP 429)"
+                    )
+
+                    print(
+                        f"[warning] Rate limited. "
+                        f"Waiting {wait:.0f} seconds. "
+                        f"Attempt {attempt + 1}/{max_retries}"
+                    )
+
+                    if attempt < max_retries - 1:
+                        time.sleep(max(0, wait))
+                        continue
+
+                    break
+
+                if 500 <= response.status_code < 600:
+                    last_error = requests.HTTPError(
+                        f"arXiv server error: HTTP {response.status_code}"
+                    )
+
+                    print(
+                        f"[warning] Server error. "
+                        f"Attempt {attempt + 1}/{max_retries}"
+                    )
+
+                    if attempt < max_retries - 1:
+                        wait = (2 ** attempt) * 2
+                        time.sleep(wait)
+                        continue
+
+                    break
+
+                last_error = requests.HTTPError(
+                    f"arXiv returned HTTP {response.status_code}"
+                )
 
                 print(
-                    "✓ arXiv request successful."
+                    "[error] arXiv returned HTTP",
+                    response.status_code,
                 )
-                print("=" * 70)
+                print("Response:", response.text[:300])
+                break
 
-                return response
+            except requests.exceptions.RequestException as error:
+                last_error = error
 
-            print(
-                "✗ arXiv returned HTTP",
-                response.status_code
-            )
+                print(
+                    f"[warning] Request failed: {error}. "
+                    f"Attempt {attempt + 1}/{max_retries}"
+                )
 
-            print(
-                "Response:",
-                response.text[:300]
-            )
+                if attempt < max_retries - 1:
+                    wait = (2 ** attempt) * 2
+                    print(f"Retrying after {wait} seconds...")
+                    time.sleep(wait)
+                else:
+                    break
 
-        except requests.exceptions.SSLError as error:
+        print("[info] Trying the next arXiv endpoint.")
 
-            last_error = error
-
-            print(
-                "✗ SSL error:"
-            )
-            print(error)
-
-        except requests.exceptions.Timeout as error:
-
-            last_error = error
-
-            print(
-                "✗ Request timed out."
-            )
-            print(error)
-
-        except requests.exceptions.ConnectionError as error:
-
-            last_error = error
-
-            print(
-                "✗ Connection error:"
-            )
-            print(error)
-
-        except requests.exceptions.RequestException as error:
-
-            last_error = error
-
-            print(
-                "✗ Request error:"
-            )
-            print(error)
-
-        except Exception as error:
-
-            last_error = error
-
-            print(
-                "✗ Unexpected error:"
-            )
-            print(error)
-
-    print()
-    print("=" * 70)
+    print("\n" + "=" * 70)
     print("ARXIV SEARCH FAILED")
     print("=" * 70)
 
     if last_error:
-        print(
-            "Last error:",
-            last_error
-        )
+        print("Last error:", last_error)
 
     print("=" * 70)
 
     return None
-
 
 # ============================================================
 # METADATA TAGS

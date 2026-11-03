@@ -432,6 +432,12 @@ def _claim_context(
         claim,
         evidence_text=evidence_text,
     )
+
+    # Prefer values already stored in the database.
+    # Fall back to evidence-aware extraction when unavailable.
+    setting = getattr(claim, "evaluation_setting", None) or setting
+    metric = getattr(claim, "metric", None) or metric
+
     measurement_scope = _extract_measurement_scope(
         claim,
         evidence_text=evidence_text,
@@ -445,20 +451,6 @@ def _claim_context(
         "metric": metric,
         "measurement_scope": measurement_scope,
     }
-
-
-def _display_model(model_key: Optional[str]) -> str:
-    return model_key if model_key else "UNKNOWN_MODEL"
-
-
-def _display_setting(setting: Optional[str]) -> str:
-    return setting if setting else "UNKNOWN_SETTING"
-
-
-def _display_metric(metric: Optional[str]) -> str:
-    return metric if metric else "UNKNOWN_METRIC"
-
-
 # ============================================================
 # CONTRADICTION CLASSIFICATION
 # ============================================================

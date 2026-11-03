@@ -77,16 +77,16 @@ else:
         )
 
     from google import genai
-from google.genai import types
+    from google.genai import types
 
-client = genai.Client(
-    api_key=api_key,
-    http_options=types.HttpOptions(
-        client_args={
-            "verify": False
-        }
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(
+            client_args={
+                "verify": False
+            }
+        )
     )
-)
 
 
 # ============================================================
@@ -287,7 +287,7 @@ def get_test_papers_stub():
 USE_LIVE_RETRIEVAL = True
 
 LIVE_QUERY = (
-    "MMLU large language model benchmark evaluation results"
+    "Llama 3 herd of models"
 )
 
 # ============================================================
@@ -1453,7 +1453,7 @@ if __name__ == "__main__":
         run_evidence_verification_regression_test()
         raise SystemExit(0)
 
-    result = run_pipeline()
+    result = run_pipeline(max_results=15)
 
     print()
     print("=" * 70)
