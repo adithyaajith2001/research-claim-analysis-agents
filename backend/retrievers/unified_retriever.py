@@ -1491,6 +1491,37 @@ class UnifiedPaperRetriever:
                 f"Related variant candidates: "
                 f"{len(variant_candidates)}"
             )
+        # A paper that names the model the user asked about must not be
+        # dropped just because its abstract never says the benchmark name
+        # (the Mistral 7B abstract does not mention MMLU, for example).
+        # Such papers go first; their full text is read later for results.
+        asked_models = extract_query_models(query)
+
+        if asked_models:
+            wanted_keys = [
+                re.sub(r"[^a-z0-9]", "", m.lower()) for m in asked_models
+            ]
+            model_items = []
+
+            for item in scored_papers:
+                paper = item[2]
+                blob = re.sub(
+                    r"[^a-z0-9]", "",
+                    (self._get_title(paper) + " " + self._get_abstract(paper)).lower()
+                )
+                if any(k and k in blob for k in wanted_keys):
+                    model_items.append(item)
+
+            model_keys = {self._normalized_title(i[2]) for i in model_items}
+            selected_pool = model_items + [
+                i for i in selected_pool
+                if self._normalized_title(i[2]) not in model_keys
+            ]
+            print(
+                f"Papers naming {asked_models}: {len(model_items)} "
+                "(placed first)"
+            )
+
         final_scored = selected_pool[:max_results]
 
         final_papers = [
