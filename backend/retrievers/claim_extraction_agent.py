@@ -1376,6 +1376,36 @@ def _extract_result_numbers(
     return values
 
 
+_MODEL_FAMILY_VERSION_PATTERN = re.compile(
+    r"\b(?:Llama|LLaMA|GPT|Gemma|Gemini|Qwen|Mistral|Mixtral|Claude|PaLM|"
+    r"Phi|Falcon|DeepSeek|Vicuna|Pythia|Granite|Nemotron|StarCoder|Yi)"
+    r"[\s-]*v?\d+(?:\.\d+)?\b",
+    re.IGNORECASE,
+)
+
+
+def _strip_model_identity(claim_text, model_name=None):
+    """
+    Remove the model's own name (and common 'Family 3.1' style versions)
+    from claim text before counting result numbers, so version digits in
+    names like 'Llama 3 405B' are not mistaken for a second reported score.
+    """
+    text = str(claim_text)
+
+    if model_name:
+        parts = [re.escape(part) for part in str(model_name).split()]
+
+        if parts:
+            text = re.sub(
+                r"\s+".join(parts),
+                " ",
+                text,
+                flags=re.IGNORECASE,
+            )
+
+    return _MODEL_FAMILY_VERSION_PATTERN.sub(" ", text)
+
+
 def _claim_contains_exactly_one_reported_value(
     claim
 ):
@@ -1425,7 +1455,10 @@ def _claim_contains_exactly_one_reported_value(
         return False
 
     claim_numbers = _extract_result_numbers(
-        claim_text
+        _strip_model_identity(
+            claim_text,
+            claim.get("model_name"),
+        )
     )
 
     if len(
