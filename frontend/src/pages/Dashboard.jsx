@@ -321,11 +321,11 @@ function Dashboard() {
               Each result a paper reports, checked against the paper's own
               text. Select a row to see the reasoning and source text.
             </p>
-            {modelLabel && skippedOther > 0 && (
+            {skippedOther > 0 && (
               <p className="rc-section-note">
-                Showing only claims about {modelLabel}.{" "}
+                Showing only results{modelLabel ? ` for ${modelLabel}` : ""} that match your question.{" "}
                 {skippedOther} claim{skippedOther === 1 ? "" : "s"} about other
-                models {skippedOther === 1 ? "was" : "were"} left out.
+                models or benchmarks {skippedOther === 1 ? "was" : "were"} left out.
               </p>
             )}
 

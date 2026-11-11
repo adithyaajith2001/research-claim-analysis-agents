@@ -944,6 +944,12 @@ def run_pipeline(
         # one after another. Nothing here touches the database.
 
         query_models = extract_query_models(query)
+        from unified_retriever import UnifiedPaperRetriever
+        _find_benchmarks = UnifiedPaperRetriever._find_query_benchmark_targets
+        query_benchmarks = {
+            re.sub(r"[^a-z0-9]", "", name.lower())
+            for name in _find_benchmarks(query)
+        }
         skipped_other_models = 0
 
         prefetched_claims = {}
@@ -1090,13 +1096,18 @@ def run_pipeline(
 
             # Keep only claims about the model the question asks about.
             # This also saves time: unrelated claims are never scored.
-            if query_models:
+            if query_models or query_benchmarks:
                 kept_claims = [
                     item for item in claims
                     if claim_matches_any(
                         query_models,
                         item.get("model_name"),
                         item.get("claim", ""),
+                    )
+                    and (
+                        not query_benchmarks
+                        or re.sub(r"[^a-z0-9]", "", str(item.get("benchmark_name") or "").lower())
+                        in query_benchmarks
                     )
                 ]
                 skipped_other_models += len(claims) - len(kept_claims)
