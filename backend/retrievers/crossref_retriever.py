@@ -35,6 +35,34 @@ class CrossRefRetriever:
         try:
 
             # =========================================
+            # FILTER OUT NON-PAPER CROSSREF RECORDS
+            # =========================================
+            # CrossRef registers individual tables/figures as their own
+            # DOIs (type "component"), which show up in search results
+            # looking like papers - e.g. "Table 5: Comparison of accuracy
+            # results...". They have no abstract and their "PDF" link is
+            # really an HTML page, so every one of them wastes a
+            # retrieval slot and a doomed download attempt downstream.
+            # Reject them here instead of after spending an HTTP request
+            # trying to download them as a PDF.
+            crossref_type = paper_data.get("type", "")
+
+            if crossref_type == "component":
+                return None
+
+            title_parts = paper_data.get("title", [])
+            title_preview = (
+                "".join(title_parts).strip().lower()
+                if title_parts
+                else ""
+            )
+
+            caption_prefixes = ("table ", "table:", "figure ", "figure:", "fig. ", "fig ")
+
+            if title_preview.startswith(caption_prefixes):
+                return None
+
+            # =========================================
             # AUTHORS
             # =========================================
 
@@ -285,6 +313,8 @@ class CrossRefRetriever:
             # PARSE EACH PAPER
             # =========================================
 
+            filtered_count = 0
+
             for paper_data in items:
 
                 paper = self._parse_single_paper(
@@ -293,6 +323,14 @@ class CrossRefRetriever:
 
                 if paper is not None:
                     papers.append(paper)
+                else:
+                    filtered_count += 1
+
+            if filtered_count:
+                print(
+                    f"  [info] CrossRef: filtered out {filtered_count} "
+                    "non-paper record(s) (table/figure captions, etc.)"
+                )
 
             return papers
 

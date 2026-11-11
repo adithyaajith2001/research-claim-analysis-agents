@@ -17,3 +17,5 @@ uvicorn>=0.29
 # PDF text extraction (pdf_processor_v2.py) - optional today, needed if
 # full-text extraction is ever wired into retrieval_adapter.py
 PyPDF2>=3.0
+# HTTPS certificate handling used by backend/main.py
+truststore>=0.9

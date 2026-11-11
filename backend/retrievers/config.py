@@ -32,7 +32,8 @@ DOMAIN_NAME = "LLM/NLP Benchmark Evaluation"
 # contradiction detection meaningful - two papers need to be talking about the
 # same yardstick (e.g. both reporting GSM8K accuracy) to be comparable at all.
 VALIDATED_BENCHMARKS = [
-    "MMLU", "GSM8K", "HumanEval", "HellaSwag", "TruthfulQA", "BIG-Bench",
+    "MMLU", "MMLU-Pro", "GSM8K", "HumanEval", "HellaSwag",
+    "TruthfulQA", "BIG-Bench", "BBH",
 ]
 
 # Used to build arXiv search queries later (Adithya's retrieval agent will
@@ -65,6 +66,9 @@ MAX_RETRIES = 3
 # disagreement between papers.
 CONTRADICTION_AGREE_MAX_DIFF = 3.0
 CONTRADICTION_HIGH_SEVERITY_DIFF = 5.0
+
+# Max valid claims kept from one extraction context group
+EXTRACTION_MAX_CLAIMS_PER_CONTEXT = 20
 
 # --- Mock mode ---------------------------------------------------------------
 # WHEN this matters: if GEMINI_API_KEY isn't set (e.g. you're testing pipeline

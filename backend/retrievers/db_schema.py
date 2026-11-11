@@ -27,13 +27,18 @@
 # )
 # from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 # import datetime
+import os
 
 # # --- Connection ---------------------------------------------------------
 # # LOCAL (today, laptop): SQLite file.
 # # LATER (deployment, per your NFRs): swap this one line for e.g.
 # #   "postgresql://user:password@host:5432/claims_audit"
 # # Nothing else in this file changes.
-# DATABASE_URL = "sqlite:///claims_audit.db"
+# # Anchor the SQLite file to this file's folder so the API and scripts always
+# use the same database no matter where they are started from.
+_DB_DIR = os.path.dirname(os.path.abspath(__file__))
+_DB_PATH = os.path.join(_DB_DIR, "claims_audit.db")
+DATABASE_URL = "sqlite:///" + _DB_PATH.replace("\\", "/")
 
 # Base = declarative_base()
 
@@ -338,6 +343,8 @@ class Claim(Base):
     # are nullable because not every claim's source text states them.
     evaluation_setting = Column(String, nullable=True)
     metric = Column(String, nullable=True)
+    # which model the reported_value is about (e.g. "Llama-2 7B"), stored as extracted
+    model_name = Column(String, nullable=True)
     evidence_strength_score = Column(Float, nullable=True)  # ERD: Evidence Strength Score
     paper = relationship("Paper", back_populates="claims")
     evidence = relationship("Evidence", back_populates="claim")
@@ -426,6 +433,7 @@ def insert_claim_with_evidence(session, claim_dict: dict) -> Claim:
         value_type=claim_dict.get("value_type"),
         evaluation_setting=claim_dict.get("evaluation_setting"),
         metric=claim_dict.get("metric"),
+        model_name=claim_dict.get("model_name"),
     )
     session.add(claim_row)
     session.flush()  # populates claim_row.id without a full commit

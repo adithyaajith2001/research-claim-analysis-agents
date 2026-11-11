@@ -4,7 +4,7 @@ Shared retry wrapper for Gemini model calls.
 """
 
 import time
-from google.genai.errors import ServerError
+from google.genai.errors import ClientError, ServerError
 
 
 def call_with_retry(
@@ -39,6 +39,21 @@ def call_with_retry(
             print(
                 f"[warn] Gemini 503 UNAVAILABLE. "
                 f"Retrying in {wait_seconds}s "
+                f"(attempt {attempt}/{max_attempts})..."
+            )
+
+            time.sleep(wait_seconds)
+
+        except ClientError as error:
+            # 429 = rate limit (easy to hit on a free-tier key). Wait and retry.
+            if getattr(error, "code", None) != 429 or attempt == max_attempts:
+                raise
+
+            wait_seconds = min(15 * attempt, 60)
+
+            print(
+                f"[warn] Gemini rate-limited (429). "
+                f"Waiting {wait_seconds}s "
                 f"(attempt {attempt}/{max_attempts})..."
             )
 
