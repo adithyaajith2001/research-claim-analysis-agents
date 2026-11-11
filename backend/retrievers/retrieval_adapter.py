@@ -2010,6 +2010,23 @@ def normalize_and_dedupe(
     )
 
 
+    # Download and read all PDFs at the same time. Each download is
+    # network-bound and independent; the processor only holds settings.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _enrich_one(raw_paper):
+        try:
+            return enrich_paper_with_pdf_text(
+                raw_paper,
+                processor=processor
+            )
+        except Exception as error:
+            print(f"⚠ PDF enrichment failed: {error}")
+            return raw_paper
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        enriched_all = list(pool.map(_enrich_one, raw_papers))
+
     # ========================================================
     # PROCESS EACH PAPER
     # ========================================================
@@ -2029,10 +2046,7 @@ def normalize_and_dedupe(
         # PDF enrichment
         # ----------------------------------------------------
 
-        enriched = enrich_paper_with_pdf_text(
-            raw,
-            processor=processor
-        )
+        enriched = enriched_all[index - 1]
 
 
         # ----------------------------------------------------

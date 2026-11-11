@@ -1791,6 +1791,53 @@ def _numeric_values_from_cell(
     return values
 
 
+def _match_header_columns_by_position(
+    header_line,
+    values,
+    benchmark,
+    reported_value
+):
+    """
+    Check one table value using the header's own column order.
+
+    Assumes the last len(values) header words are the data columns and
+    any words before them are label columns (Model, Modality, ...).
+    Returns True only when the benchmark is exactly one data column and
+    that column holds the reported value; otherwise False.
+    """
+
+    try:
+        reported = float(reported_value)
+    except (TypeError, ValueError):
+        return False
+
+    tokens = str(header_line or "").split()
+    count = len(values)
+
+    # At most a few label columns before the data columns.
+    if count < 2 or len(tokens) < count or len(tokens) - count > 3:
+        return False
+
+    data_headers = tokens[-count:]
+    wanted = re.sub(r"[^a-z0-9]", "", str(benchmark or "").lower())
+
+    positions = [
+        index
+        for index, token in enumerate(data_headers)
+        if re.sub(r"[^a-z0-9]", "", token.lower()) == wanted
+    ]
+
+    if len(positions) != 1:
+        return False
+
+    return math.isclose(
+        values[positions[0]],
+        reported,
+        rel_tol=0.0,
+        abs_tol=1e-9,
+    )
+
+
 def _table_value_matches_whitespace_table(
     claim
 ):
@@ -2003,7 +2050,15 @@ def _table_value_matches_whitespace_table(
             )
 
             if len(values) != len(ordered_benchmarks):
-                return False
+                # The header has more columns than the benchmarks we know
+                # by name (for example WinoG, PIQA, Arc-e, NQ, MBPP).
+                # Map columns by position from the header instead.
+                return _match_header_columns_by_position(
+                    header_line,
+                    values,
+                    benchmark,
+                    claim.get("reported_value"),
+                )
 
             try:
                 reported_value = float(
