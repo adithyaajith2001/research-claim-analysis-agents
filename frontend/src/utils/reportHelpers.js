@@ -23,7 +23,7 @@ export const SCORE_WEIGHTS = [
     key: "Skeptic",
     label: "Skeptic review",
     weight: 10,
-    help: "A devil's-advocate check for doubtful or contradicting wording."
+    help: "A simple keyword check for doubtful or contradicting wording. A high score only means none was found; it is a limited signal."
   }
 ];
 
@@ -123,3 +123,11 @@ export function formatValue(claim) {
   return isScore ? `${value}%` : String(value);
 }
 
+
+// Number of different papers the claims come from.
+export function sourceCount(claims) {
+  return new Set((claims || []).map((claim) => claim.paper_id ?? claim.paper_title)).size;
+}
+
+export const SINGLE_SOURCE_NOTE =
+  "Single source: these results come from one paper and were not confirmed by another paper, so treat the score as provisional.";

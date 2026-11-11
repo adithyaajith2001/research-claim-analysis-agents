@@ -7,7 +7,9 @@ import {
   formatScore,
   formatSeconds,
   claimVerdict,
-  formatValue
+  formatValue,
+  sourceCount,
+  SINGLE_SOURCE_NOTE
 } from "./reportHelpers";
 
 const BLUE = [12, 83, 148];
@@ -118,6 +120,9 @@ export function downloadReportPdf(analysisData) {
       true
     );
     paragraph(info.text);
+    if (comparisons.length === 0 && sourceCount(claims) <= 1) {
+      paragraph(SINGLE_SOURCE_NOTE, 10, MUTED);
+    }
   }
 
   y += 4;

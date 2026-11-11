@@ -13,7 +13,9 @@ import {
   formatSeconds,
   claimVerdict,
   claimSourceText,
-  formatValue
+  formatValue,
+  sourceCount,
+  SINGLE_SOURCE_NOTE
 } from "../utils/reportHelpers";
 import { downloadReportPdf } from "../utils/reportPdf";
 
@@ -226,6 +228,12 @@ function Dashboard() {
               <Badge tone={info.tone}>{info.label}</Badge>
               <h2>{info.headline}</h2>
               <p>{info.text}</p>
+
+              {claims.length > 0 &&
+                comparisons.length === 0 &&
+                sourceCount(claims) <= 1 && (
+                  <p className="rc-single-source">{SINGLE_SOURCE_NOTE}</p>
+                )}
 
               <ul className="rc-summary-facts">
                 <li>
