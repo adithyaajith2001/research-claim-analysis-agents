@@ -56,7 +56,7 @@ os.makedirs(
 def search_arxiv(
     query,
     max_results=5,
-    max_retries=4,
+    max_retries=3,
 ):
     """
     Search arXiv using multiple API endpoints.
@@ -140,6 +140,8 @@ def search_arxiv(
                         f"Attempt {attempt + 1}/{max_retries}"
                     )
 
+                    wait = min(wait, 6)
+
                     if attempt < max_retries - 1:
                         time.sleep(max(0, wait))
                         continue
@@ -157,7 +159,7 @@ def search_arxiv(
                     )
 
                     if attempt < max_retries - 1:
-                        wait = (2 ** attempt) * 2
+                        wait = min((2 ** attempt) * 2, 6)
                         time.sleep(wait)
                         continue
 
@@ -183,7 +185,7 @@ def search_arxiv(
                 )
 
                 if attempt < max_retries - 1:
-                    wait = (2 ** attempt) * 2
+                    wait = min((2 ** attempt) * 2, 6)
                     print(f"Retrying after {wait} seconds...")
                     time.sleep(wait)
                 else:

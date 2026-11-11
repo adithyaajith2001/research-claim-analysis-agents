@@ -1119,6 +1119,30 @@ class UnifiedPaperRetriever:
                 f"  → Added {added} unique papers from {source_name}"
             )
 
+        # Fetch all three sources at the same time. Each source can wait
+        # on rate limits independently, so running them one after another
+        # made retrieval take minutes. Results are merged below in a fixed
+        # order, so ranking and deduplication behave exactly as before.
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _fetch_source(search_function):
+            results = []
+            for retrieval_query in retrieval_queries:
+                try:
+                    results.append(search_function(retrieval_query, max_results) or [])
+                except Exception as error:
+                    print(f"  → search failed: {error}")
+                    results.append([])
+            return results
+
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            futures = {
+                "arxiv": pool.submit(_fetch_source, self.arxiv_retriever.search_arxiv),
+                "semantic": pool.submit(_fetch_source, self.semantic_retriever.search_semantic_scholar),
+                "crossref": pool.submit(_fetch_source, self.crossref_retriever.search_crossref),
+            }
+            prefetched = {name: future.result() for name, future in futures.items()}
+
         # ----------------------------------------------------
         # STEP 1: arXiv
         # ----------------------------------------------------
@@ -1130,11 +1154,7 @@ class UnifiedPaperRetriever:
         try:
 
             total_found = 0
-            for retrieval_query in retrieval_queries:
-                arxiv_papers = self.arxiv_retriever.search_arxiv(
-                    retrieval_query,
-                    max_results
-                )
+            for arxiv_papers in prefetched["arxiv"]:
                 total_found += len(arxiv_papers or [])
                 add_papers(
                     arxiv_papers,
@@ -1164,14 +1184,7 @@ class UnifiedPaperRetriever:
         try:
 
             total_found = 0
-            for retrieval_query in retrieval_queries:
-                semantic_papers = (
-                    self.semantic_retriever
-                    .search_semantic_scholar(
-                        retrieval_query,
-                        max_results
-                    )
-                )
+            for semantic_papers in prefetched["semantic"]:
                 total_found += len(semantic_papers or [])
                 add_papers(
                     semantic_papers,
@@ -1201,14 +1214,7 @@ class UnifiedPaperRetriever:
         try:
 
             total_found = 0
-            for retrieval_query in retrieval_queries:
-                crossref_papers = (
-                    self.crossref_retriever
-                    .search_crossref(
-                        retrieval_query,
-                        max_results
-                    )
-                )
+            for crossref_papers in prefetched["crossref"]:
                 total_found += len(crossref_papers or [])
                 add_papers(
                     crossref_papers,

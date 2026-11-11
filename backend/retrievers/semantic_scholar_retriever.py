@@ -79,14 +79,14 @@ class SemanticScholarRetriever:
             'fields': 'paperId,title,authors,abstract,year,venue,citationCount,referenceCount,isOpenAccess,externalIds,openAccessPdf'
         }
 
-        max_retries = 4
+        max_retries = 2
         for attempt in range(max_retries):
             try:
                 response = requests.get(self.base_url, params=params, timeout=10)
 
                 if response.status_code == 429:
                     retry_after = response.headers.get("Retry-After")
-                    wait = float(retry_after) if retry_after else (2 ** attempt) * 3
+                    wait = min(float(retry_after) if retry_after else (2 ** attempt) * 3, 4)
                     print(f"  [warn] Semantic Scholar rate-limited (429), waiting "
                           f"{wait:.0f}s before retry {attempt + 1}/{max_retries}...")
                     time.sleep(wait)
@@ -105,7 +105,7 @@ class SemanticScholarRetriever:
             except Exception as e:
                 print(f"Error searching Semantic Scholar: {str(e)}")
                 if attempt < max_retries - 1:
-                    time.sleep((2 ** attempt) * 2)
+                    time.sleep(1)
                     continue
                 return []
 
