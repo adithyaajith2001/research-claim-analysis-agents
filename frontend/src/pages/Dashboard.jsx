@@ -1,1336 +1,652 @@
-import { useContext } from "react";
+import { Fragment, useContext, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
-
 import { AnalysisContext } from "../context/AnalysisContext";
 
-import SummaryCard from "../components/dashboard/SummaryCard";
-import AISummary from "../components/dashboard/AISummary";
-import ConfidenceGauge from "../components/dashboard/ConfidenceGauge";
-
-import "../styles/dashboard.css";
-
-
-function Dashboard() {
-
-  const { analysisData } = useContext(
-    AnalysisContext
-  );
-
-
-  // =========================================================
-  // DEBUG
-  // =========================================================
-
-  console.log(
-    "======================================"
-  );
-
-  console.log(
-    "DASHBOARD ANALYSIS DATA:"
-  );
-
-  console.log(
-    analysisData
-  );
-
-  console.log(
-    "======================================"
-  );
-
-
-  // =========================================================
-  // TOPIC
-  // =========================================================
-
-  const topic =
-    analysisData?.topic ||
-    analysisData?.query ||
-    "No topic analyzed";
-
-
-  // =========================================================
-  // RETRIEVED PAPERS
-  // =========================================================
-
-  const paperList =
-    Array.isArray(
-      analysisData?.paperList
-    )
-      ? analysisData.paperList
-      : [];
-
-
-  // =========================================================
-  // PAPER COUNT
-  // =========================================================
-
-  const paperCount =
-    Number.isFinite(
-      Number(
-        analysisData?.papers_retrieved
-      )
-    )
-      ? Number(
-          analysisData.papers_retrieved
-        )
-      : paperList.length;
-
-
-  // =========================================================
-  // RAW CONFIDENCE
-  // =========================================================
-  //
-  // Backend confidence remains on a 0–10 scale.
-  //
-  // Example:
-  //     7.83
-  //
-  // SummaryCard.jsx and ConfidenceGauge.jsx convert this
-  // value to 78.3% using the shared confidence helper.
-  // =========================================================
-
-  const rawConfidence =
-    Number(
-      analysisData?.confidence
-    ) || 0;
-
-
-  // =========================================================
-  // CLAIM COUNT
-  // =========================================================
-
-  const extractedClaims =
-    Array.isArray(
-      analysisData?.extractedClaims
-    )
-      ? analysisData.extractedClaims
-      : [];
-
-
-  const claims =
-    Number.isFinite(
-      Number(
-        analysisData?.claimsExtracted
-      )
-    )
-      ? Number(
-          analysisData.claimsExtracted
-        )
-      : Number.isFinite(
-          Number(
-            analysisData?.claims
-          )
-        )
-        ? Number(
-            analysisData.claims
-          )
-        : extractedClaims.length;
-
-
-  // =========================================================
-  // EVIDENCE GROUPS
-  // =========================================================
-
-  const supportingPapers =
-    Array.isArray(
-      analysisData?.supportingPapers
-    )
-      ? analysisData.supportingPapers
-      : [];
-
-
-  const contradictingPapers =
-    Array.isArray(
-      analysisData?.contradictingPapers
-    )
-      ? analysisData.contradictingPapers
-      : [];
-
-
-  const neutralPapers =
-    Array.isArray(
-      analysisData?.neutralPapers
-    )
-      ? analysisData.neutralPapers
-      : [];
-
-
-  // =========================================================
-  // CONTRADICTIONS
-  // =========================================================
-
-  const contradictions =
-    Array.isArray(
-      analysisData?.contradictions
-    )
-      ? analysisData.contradictions
-      : [];
-
-
-  // =========================================================
-  // SUMMARY
-  // =========================================================
-
-  const summary =
-    analysisData?.summary ||
-    `Retrieved ${paperCount} research papers for "${topic}".`;
-
-
-  // =========================================================
-  // ALL CLAIM RECORDS
-  // =========================================================
-  //
-  // Prefer extractedClaims from context.
-  // If that is unavailable, use rawResponse.claims.
-  //
-  // This is important because the backend claim records contain
-  // verification.supporting_evidence with paper-specific
-  // similarity_score values.
-  // =========================================================
-
-  const claimRecords =
-    extractedClaims.length > 0
-      ? extractedClaims
-      : Array.isArray(
-          analysisData?.rawResponse?.claims
-        )
-        ? analysisData.rawResponse.claims
-        : [];
-
-
-  // =========================================================
-  // FIND ORIGINAL PAPER
-  // =========================================================
-
-  const findOriginalPaper = (
-    evidencePaper
-  ) => {
-
-    if (!evidencePaper) {
-      return null;
-    }
-
-
-    // -------------------------------------------------------
-    // Match by ID
-    // -------------------------------------------------------
-
-    if (
-      evidencePaper.id !== undefined &&
-      evidencePaper.id !== null
-    ) {
-
-      const matchById =
-        paperList.find(
-          paper =>
-            String(
-              paper?.id
-            ) ===
-            String(
-              evidencePaper.id
-            )
-        );
-
-
-      if (matchById) {
-        return matchById;
-      }
-
-    }
-
-
-    // -------------------------------------------------------
-    // Match by paper_id
-    // -------------------------------------------------------
-
-    if (
-      evidencePaper.paper_id
-    ) {
-
-      const matchByPaperId =
-        paperList.find(
-          paper =>
-            String(
-              paper?.id ||
-              paper?.paper_id ||
-              ""
-            ) ===
-            String(
-              evidencePaper.paper_id
-            )
-        );
-
-
-      if (matchByPaperId) {
-        return matchByPaperId;
-      }
-
-    }
-
-
-    // -------------------------------------------------------
-    // Match by arXiv ID
-    // -------------------------------------------------------
-
-    if (
-      evidencePaper.arxiv_id
-    ) {
-
-      const matchByArxiv =
-        paperList.find(
-          paper =>
-            String(
-              paper?.arxiv_id || ""
-            ) ===
-            String(
-              evidencePaper.arxiv_id
-            )
-        );
-
-
-      if (matchByArxiv) {
-        return matchByArxiv;
-      }
-
-    }
-
-
-    // -------------------------------------------------------
-    // Match by title
-    // -------------------------------------------------------
-
-    if (
-      evidencePaper.title ||
-      evidencePaper.paper_title
-    ) {
-
-      const targetTitle =
-        String(
-          evidencePaper.title ||
-          evidencePaper.paper_title ||
-          ""
-        ).trim();
-
-
-      const matchByTitle =
-        paperList.find(
-          paper =>
-            String(
-              paper?.title || ""
-            ).trim() ===
-            targetTitle
-        );
-
-
-      if (matchByTitle) {
-        return matchByTitle;
-      }
-
-    }
-
-
-    return null;
-
-  };
-
-
-  // =========================================================
-  // GET EVIDENCE SIMILARITY
-  // =========================================================
-  //
-  // Supporting evidence normally has:
-  //
-  //     similarity_score: 0.776
-  //
-  // which becomes:
-  //
-  //     77.6%
-  //
-  // Neutral evidence may not contain the score directly.
-  // In that case, find the corresponding claim by paper_id
-  // and read its verification.supporting_evidence.
-  // =========================================================
-
-  const getEvidenceSimilarity = (
-    evidencePaper
-  ) => {
-
-    if (!evidencePaper) {
-      return 0;
-    }
-
-
-    // =======================================================
-    // 1. DIRECT SIMILARITY SCORE
-    // =======================================================
-
-    const directSimilarity =
-      Number(
-        evidencePaper?.similarity_score
-      );
-
-
-    if (
-      Number.isFinite(
-        directSimilarity
-      )
-    ) {
-
-      return Math.round(
-        directSimilarity * 1000
-      ) / 10;
-
-    }
-
-
-    // =======================================================
-    // 2. IDENTIFY PAPER
-    // =======================================================
-
-    const targetPaperId =
-      String(
-        evidencePaper?.paper_id ||
-        evidencePaper?.id ||
-        ""
-      );
-
-
-    if (!targetPaperId) {
-      return 0;
-    }
-
-
-    // =======================================================
-    // 3. FIND CLAIM FOR SAME PAPER
-    // =======================================================
-
-    const matchingClaim =
-      claimRecords.find(
-        claim =>
-          String(
-            claim?.paper_id ||
-            claim?.id ||
-            ""
-          ) ===
-          targetPaperId
-      );
-
-
-    if (!matchingClaim) {
-      return 0;
-    }
-
-
-    // =======================================================
-    // 4. SEARCH VERIFICATION SUPPORTING EVIDENCE
-    // =======================================================
-
-    const verificationEvidence =
-      Array.isArray(
-        matchingClaim?.verification?.supporting_evidence
-      )
-        ? matchingClaim.verification.supporting_evidence
-        : [];
-
-
-    const matchingEvidence =
-      verificationEvidence.find(
-        item =>
-          String(
-            item?.paper_id ||
-            ""
-          ) ===
-          targetPaperId
-      );
-
-
-    const verificationSimilarity =
-      Number(
-        matchingEvidence?.similarity_score
-      );
-
-
-    if (
-      Number.isFinite(
-        verificationSimilarity
-      )
-    ) {
-
-      return Math.round(
-        verificationSimilarity * 1000
-      ) / 10;
-
-    }
-
-
-    // =======================================================
-    // 5. NO SCORE AVAILABLE
-    // =======================================================
-
-    return 0;
-
-  };
-
-
-  // =========================================================
-  // NORMALIZE EVIDENCE PAPER
-  // =========================================================
-
-  const normalizeEvidencePaper = (
-    evidencePaper
-  ) => {
-
-    const originalPaper =
-      findOriginalPaper(
-        evidencePaper
-      );
-
-
+import "../styles/report.css";
+
+
+// ============================================================
+// SMALL HELPERS
+// ============================================================
+
+const SCORE_WEIGHTS = [
+  {
+    key: "Evidence Strength",
+    label: "Evidence strength",
+    weight: 40,
+    help: "How convincing the evidence is: clear results on a trusted benchmark."
+  },
+  {
+    key: "Verification",
+    label: "Verification",
+    weight: 30,
+    help: "Whether the paper's own text backs up the claim."
+  },
+  {
+    key: "Contradiction",
+    label: "Agreement with other papers",
+    weight: 20,
+    help: "Whether other papers report the same result for the same model."
+  },
+  {
+    key: "Skeptic",
+    label: "Skeptic review",
+    weight: 10,
+    help: "A devil's-advocate check for doubtful or contradicting wording."
+  }
+];
+
+function levelInfo(level) {
+  const value = String(level || "Low").toLowerCase();
+
+  if (value === "high") {
     return {
-
-      ...(originalPaper || {}),
-
-      ...(evidencePaper || {}),
-
-
-      // -----------------------------------------------------
-      // TITLE
-      // -----------------------------------------------------
-
-      title:
-        evidencePaper?.title ||
-        evidencePaper?.paper_title ||
-        originalPaper?.title ||
-        "Untitled Paper",
-
-
-      // -----------------------------------------------------
-      // AUTHORS
-      // -----------------------------------------------------
-
-      authors:
-        Array.isArray(
-          evidencePaper?.authors
-        )
-          ? evidencePaper.authors
-          : Array.isArray(
-              originalPaper?.authors
-            )
-            ? originalPaper.authors
-            : [],
-
-
-      // -----------------------------------------------------
-      // ABSTRACT
-      // -----------------------------------------------------
-
-      abstract:
-        evidencePaper?.abstract ||
-        originalPaper?.abstract ||
-        "",
-
-
-      // -----------------------------------------------------
-      // SOURCE URL
-      // -----------------------------------------------------
-
-      abs_url:
-        evidencePaper?.abs_url ||
-        evidencePaper?.source_url ||
-        originalPaper?.abs_url ||
-        originalPaper?.source_url ||
-        "",
-
-
-      // -----------------------------------------------------
-      // RELEVANCE / SIMILARITY
-      // -----------------------------------------------------
-
-      relevance_score:
-        getEvidenceSimilarity(
-          evidencePaper
-        ),
-
-
-      // -----------------------------------------------------
-      // EXTRACTED EVIDENCE
-      // -----------------------------------------------------
-
-      extracted_claims:
-        Array.isArray(
-          evidencePaper?.extracted_claims
-        )
-          ? evidencePaper.extracted_claims
-          : []
-
+      tone: "high",
+      label: "High confidence",
+      headline: "Strong supporting evidence",
+      text: "The claims found are well supported and consistent with the evidence."
     };
+  }
 
+  if (value === "medium") {
+    return {
+      tone: "medium",
+      label: "Medium confidence",
+      headline: "Moderate evidence: check the details",
+      text: "The claims are supported, but the evidence has gaps. Review the weaker claims below before relying on them."
+    };
+  }
+
+  return {
+    tone: "low",
+    label: "Low confidence",
+    headline: "Weak or limited evidence",
+    text: "The evidence found is limited. Treat these claims with caution."
   };
-
-
-  // =========================================================
-  // EVIDENCE CARD
-  // =========================================================
-
-  const renderEvidencePaper = (
-    paper,
-    index,
-    type
-  ) => {
-
-    const normalizedPaper =
-      normalizeEvidencePaper(
-        paper
-      );
-
-
-    const title =
-      normalizedPaper.title;
-
-
-    const authors =
-      normalizedPaper.authors;
-
-
-    const relevance =
-      normalizedPaper.relevance_score;
-
-
-    const extractedEvidence =
-      normalizedPaper.extracted_claims;
-
-
-    return (
-
-      <div
-        className="paper-item"
-        key={
-          normalizedPaper.paper_id ||
-          normalizedPaper.id ||
-          normalizedPaper.arxiv_id ||
-          `${type}-${index}`
-        }
-      >
-
-
-        {/* =================================================
-            TITLE
-        ================================================= */}
-
-        <strong>
-          {title}
-        </strong>
-
-
-        {/* =================================================
-            AUTHORS
-        ================================================= */}
-
-        {authors.length > 0 && (
-
-          <p>
-
-            <strong>
-              Authors:
-            </strong>{" "}
-
-            {authors.join(", ")}
-
-          </p>
-
-        )}
-
-
-        {/* =================================================
-            RELEVANCE
-        ================================================= */}
-
-        <p>
-
-          <strong>
-            Evidence Similarity:
-          </strong>{" "}
-
-          {Number(
-            relevance
-          ).toFixed(1)}%
-
-        </p>
-
-
-        {/* =================================================
-            EXTRACTED EVIDENCE
-        ================================================= */}
-
-        {extractedEvidence.length > 0 && (
-
-          <p>
-
-            <strong>
-              Evidence:
-            </strong>{" "}
-
-            {extractedEvidence[0]}
-
-          </p>
-
-        )}
-
-
-        {/* =================================================
-            SOURCE LINK
-        ================================================= */}
-
-        {normalizedPaper.abs_url && (
-
-          <div>
-
-            <a
-              href={
-                normalizedPaper.abs_url
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-
-              View on arXiv →
-
-            </a>
-
-          </div>
-
-        )}
-
-      </div>
-
-    );
-
-  };
-
-
-  // =========================================================
-  // RENDER
-  // =========================================================
-
-  return (
-
-    <>
-
-      <Navbar />
-
-
-      <main className="dashboard-container">
-
-
-        {/* =================================================
-            RESEARCH TOPIC
-        ================================================= */}
-
-        <div className="dashboard-topic">
-
-          <p>
-            Research Claim
-          </p>
-
-
-          <h1>
-            {topic}
-          </h1>
-
-        </div>
-
-
-        {/* =================================================
-            SUMMARY
-        ================================================= */}
-
-        <SummaryCard
-          topic={topic}
-          paperCount={paperCount}
-          confidence={rawConfidence}
-          claims={claims}
-        />
-
-
-        {/* =================================================
-            AI SUMMARY
-        ================================================= */}
-
-        <AISummary
-          topic={topic}
-          paperCount={paperCount}
-          confidence={rawConfidence}
-          claims={claims}
-          summary={summary}
-        />
-
-
-        {/* =================================================
-            CONFIDENCE
-        ================================================= */}
-
-        <ConfidenceGauge
-          confidence={rawConfidence}
-          topic={topic}
-        />
-
-
-        {/* =================================================
-            EVIDENCE OVERVIEW
-        ================================================= */}
-
-        <section className="dashboard-bottom">
-
-
-          {/* =================================================
-              SUPPORTING PAPERS
-          ================================================= */}
-
-          <div className="dashboard-card">
-
-            <h2>
-              🟢 Supporting Evidence
-            </h2>
-
-
-            <p>
-
-              {supportingPapers.length} paper
-              {supportingPapers.length !== 1
-                ? "s"
-                : ""}{" "}
-              classified as supporting the claim.
-
-            </p>
-
-
-            {supportingPapers.length === 0 ? (
-
-              <p>
-                No supporting papers were identified.
-              </p>
-
-            ) : (
-
-              supportingPapers.map(
-                (paper, index) =>
-                  renderEvidencePaper(
-                    paper,
-                    index,
-                    "supporting"
-                  )
-              )
-
-            )}
-
-          </div>
-
-
-          {/* =================================================
-              CONTRADICTING PAPERS
-          ================================================= */}
-
-          <div className="dashboard-card">
-
-            <h2>
-              🔴 Contradicting Evidence
-            </h2>
-
-
-            <p>
-
-              {contradictingPapers.length} paper
-              {contradictingPapers.length !== 1
-                ? "s"
-                : ""}{" "}
-              classified as contradicting.
-
-            </p>
-
-
-            {contradictingPapers.length === 0 ? (
-
-              <p>
-                The current analysis did not classify any evidence as contradicting. This does not establish that all research claims are consistent.
-              </p>
-
-            ) : (
-
-              contradictingPapers.map(
-                (paper, index) =>
-                  renderEvidencePaper(
-                    paper,
-                    index,
-                    "contradicting"
-                  )
-              )
-
-            )}
-
-          </div>
-
-
-        </section>
-
-
-        {/* =================================================
-            NEUTRAL EVIDENCE
-        ================================================= */}
-
-        <section className="dashboard-card">
-
-          <h2>
-            ⚪ Neutral Evidence
-          </h2>
-
-
-          <p>
-
-            {neutralPapers.length} paper
-            {neutralPapers.length !== 1
-              ? "s"
-              : ""}{" "}
-            classified as neutral or not directly
-            related to the specific claim.
-
-          </p>
-
-
-          {neutralPapers.length === 0 ? (
-
-            <p>
-              No neutral papers were identified.
-            </p>
-
-          ) : (
-
-            neutralPapers.map(
-              (paper, index) =>
-                renderEvidencePaper(
-                  paper,
-                  index,
-                  "neutral"
-                )
-            )
-
-          )}
-
-        </section>
-
-
-        {/* =================================================
-            EXTRACTED CLAIMS
-        ================================================= */}
-
-        <section className="dashboard-card">
-
-          <h2>
-            🧠 Extracted Research Claims
-          </h2>
-
-
-          <p>
-
-            {claims} claims were extracted
-            from the retrieved research papers.
-
-          </p>
-
-
-          {extractedClaims.length === 0 ? (
-
-            <p>
-              No extracted claims available.
-            </p>
-
-          ) : (
-
-            extractedClaims.map(
-              (item, index) => (
-
-                <div
-                  className="paper-item"
-                  key={
-                    item?.claim_id ||
-                    item?.paper_id ||
-                    index
-                  }
-                >
-
-                  <strong>
-                    Claim {index + 1}
-                  </strong>
-
-
-                  <p>
-
-                    {item?.claim ||
-                      "No claim text available."}
-
-                  </p>
-
-
-                  <small>
-
-                    Source:{" "}
-
-                    {item?.paper_title ||
-                      item?.source ||
-                      "Unknown paper"}
-
-                  </small>
-
-                </div>
-
-              )
-            )
-
-          )}
-
-        </section>
-
-
-        {/* =================================================
-            CROSS-PAPER COMPARISONS
-        ================================================= */}
-
-      
-
-          <section className="dashboard-card">
-
-            <h2>
-              🔎 Cross-Paper Comparisons
-            </h2>
-
-{contradictions.length === 0 ? (
-  <p>
-    No cross-paper comparison records were returned for this
-    analysis. This does not prove that all research claims are
-    consistent.
-  </p>
-) : (
-  <p>
-    {contradictions.length} cross-paper comparison record
-    {contradictions.length !== 1 ? "s" : ""} were generated.
-  </p>
-)}
-           
-
-
-            {contradictions.map(
-              (item, index) => (
-
-                <div
-                  className="paper-item"
-                  key={
-                    item?.id ||
-                    `${item?.claim_a_id}-${item?.claim_b_id}` ||
-                    index
-                  }
-                >
-
-                  <strong>
-                    Comparison {index + 1}
-                  </strong>
-
-
-                  <p>
-
-                    <strong>
-                      Relation:
-                    </strong>{" "}
-
-                    {item?.relation_type ||
-                      item?.relation ||
-                      "Unknown"}
-
-                  </p>
-
-
-                  {item?.severity && (
-
-                    <p>
-
-                      <strong>
-                        Severity:
-                      </strong>{" "}
-
-                      {item.severity}
-
-                    </p>
-
-                  )}
-
-
-                  {item?.claim_a_text && (
-
-                    <p>
-
-                      <strong>
-                        Claim A:
-                      </strong>{" "}
-
-                      {item.claim_a_text}
-
-                    </p>
-
-                  )}
-
-
-                  {item?.claim_b_text && (
-
-                    <p>
-
-                      <strong>
-                        Claim B:
-                      </strong>{" "}
-
-                      {item.claim_b_text}
-
-                    </p>
-
-                  )}
-
-                </div>
-
-              )
-            )}
-
-          </section>
-
-        
-
-
-        {/* =================================================
-            RETRIEVED RESEARCH PAPERS + STATISTICS
-        ================================================= */}
-
-        <section className="dashboard-bottom">
-
-
-          {/* =================================================
-              RETRIEVED RESEARCH PAPERS
-          ================================================= */}
-
-          <div className="dashboard-card">
-
-            <h2>
-              📚 Retrieved Research Papers
-            </h2>
-
-
-            {paperList.length === 0 ? (
-
-              <p>
-                No research papers were retrieved.
-              </p>
-
-            ) : (
-
-              paperList.map(
-                (paper, index) => (
-
-                  <div
-                    className="paper-item"
-                    key={
-                      paper?.id ||
-                      paper?.arxiv_id ||
-                      index
-                    }
-                  >
-
-                    <strong>
-
-                      {paper?.title ||
-                        "Untitled Paper"}
-
-                    </strong>
-
-
-                    {/* AUTHORS */}
-
-                    {Array.isArray(
-                      paper?.authors
-                    ) &&
-                      paper.authors.length > 0 && (
-
-                        <p>
-
-                          <strong>
-                            Authors:
-                          </strong>{" "}
-
-                          {paper.authors.join(
-                            ", "
-                          )}
-
-                        </p>
-
-                      )}
-
-
-                    {/* ABSTRACT */}
-
-                    {paper?.abstract && (
-
-                      <p>
-                        {paper.abstract}
-                      </p>
-
-                    )}
-
-
-                    {/* YEAR */}
-
-                    {paper?.year && (
-
-                      <small>
-
-                        Published:{" "}
-                        {paper.year}
-
-                      </small>
-
-                    )}
-
-
-                    {paper?.published_date &&
-                      !paper?.year && (
-
-                        <small>
-
-                          Published:{" "}
-                          {String(
-                            paper.published_date
-                          ).slice(0, 10)}
-
-                        </small>
-
-                      )}
-
-
-                    {/* SOURCE LINK */}
-
-                    {(
-                      paper?.abs_url ||
-                      paper?.source_url
-                    ) && (
-
-                      <div>
-
-                        <a
-                          href={
-                            paper.abs_url ||
-                            paper.source_url
-                          }
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-
-                          View on arXiv →
-
-                        </a>
-
-                      </div>
-
-                    )}
-
-                  </div>
-
-                )
-              )
-
-            )}
-
-          </div>
-
-
-          {/* =================================================
-              RESEARCH STATISTICS
-          ================================================= */}
-
-          <div className="dashboard-card">
-
-            <h2>
-              📊 Research Statistics
-            </h2>
-
-
-            <div className="stats">
-
-
-              <div className="stat">
-
-                <h3>
-                  {paperCount}
-                </h3>
-
-                <p>
-                  Papers Retrieved
-                </p>
-
-              </div>
-
-
-              <div className="stat">
-
-                <h3>
-                  {rawConfidence}/10
-                </h3>
-
-                <p>
-                  Confidence
-                </p>
-
-              </div>
-
-
-              <div className="stat">
-
-                <h3>
-                  {claims}
-                </h3>
-
-                <p>
-                  Claims Extracted
-                </p>
-
-              </div>
-
-
-              <div className="stat">
-
-                <h3>
-                  2.4s
-                </h3>
-
-                <p>
-                  Analysis Time
-                </p>
-
-              </div>
-
-
-            </div>
-
-          </div>
-
-
-        </section>
-
-
-      </main>
-
-
-      <Footer />
-
-    </>
-
-  );
-
 }
 
+function scoreTone(score) {
+  const value = Number(score);
+
+  if (!Number.isFinite(value)) return "none";
+  if (value >= 7) return "high";
+  if (value >= 5) return "medium";
+  return "low";
+}
+
+function formatScore(score) {
+  const value = Number(score);
+  return Number.isFinite(value) ? value.toFixed(1) : "-";
+}
+
+function formatSeconds(totalSeconds) {
+  const seconds = Math.round(Number(totalSeconds));
+
+  if (!Number.isFinite(seconds) || seconds <= 0) return "-";
+
+  const minutes = Math.floor(seconds / 60);
+  const rest = seconds % 60;
+
+  return minutes > 0 ? `${minutes}m ${rest}s` : `${rest}s`;
+}
+
+function claimVerdict(claim) {
+  const verification = claim?.verification || {};
+
+  if ((verification.supporting_evidence || []).length > 0) {
+    return { tone: "high", label: "Supported" };
+  }
+
+  if ((verification.weak_evidence || []).length > 0) {
+    return { tone: "medium", label: "Weak support" };
+  }
+
+  const score = Number(claim?.verification_score);
+
+  if (Number.isFinite(score)) {
+    if (score >= 7.5) return { tone: "high", label: "Supported" };
+    if (score >= 4.5) return { tone: "medium", label: "Weak support" };
+  }
+
+  return { tone: "low", label: "Not supported" };
+}
+
+function claimSourceText(claim) {
+  const verification = claim?.verification || {};
+
+  const first =
+    (verification.supporting_evidence || [])[0] ||
+    (verification.evidence_results || [])[0] ||
+    (verification.weak_evidence || [])[0];
+
+  return first?.evidence || "";
+}
+
+function formatValue(claim) {
+  const value = Number(claim?.reported_value);
+
+  if (!Number.isFinite(value)) return "-";
+
+  const isScore = String(claim?.value_type || "").includes("accuracy");
+
+  return isScore ? `${value}%` : String(value);
+}
+
+function Badge({ tone, children }) {
+  return <span className={`rc-badge rc-badge-${tone}`}>{children}</span>;
+}
+
+
+// ============================================================
+// CONFIDENCE RING
+// ============================================================
+
+function ConfidenceRing({ score, tone }) {
+  const numeric = Math.min(Math.max(Number(score) || 0, 0), 10);
+  const radius = 62;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference * (1 - numeric / 10);
+
+  return (
+    <div className="rc-ring" role="img" aria-label={`Confidence ${numeric.toFixed(1)} out of 10`}>
+      <svg viewBox="0 0 160 160" width="190" height="190">
+        <circle
+          cx="80"
+          cy="80"
+          r={radius}
+          className="rc-ring-track"
+        />
+        <circle
+          cx="80"
+          cy="80"
+          r={radius}
+          className={`rc-ring-value rc-ring-${tone}`}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          transform="rotate(-90 80 80)"
+        />
+      </svg>
+
+      <div className="rc-ring-label">
+        <strong>{numeric.toFixed(1)}</strong>
+        <span>out of 10</span>
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================
+// PAGE
+// ============================================================
+
+function Dashboard() {
+  const navigate = useNavigate();
+
+  const { analysisData } = useContext(AnalysisContext);
+
+  const [openClaim, setOpenClaim] = useState(null);
+  const [openPaper, setOpenPaper] = useState(null);
+
+  const topic = analysisData?.topic || "";
+  const status = analysisData?.status || "";
+
+  const claims = Array.isArray(analysisData?.extractedClaims)
+    ? analysisData.extractedClaims
+    : [];
+
+  const papers = Array.isArray(analysisData?.paperList)
+    ? analysisData.paperList
+    : [];
+
+  const comparisons = Array.isArray(analysisData?.contradictions)
+    ? analysisData.contradictions
+    : [];
+
+  const score = Number(analysisData?.confidence) || 0;
+  const level = analysisData?.confidenceLevel || "Low";
+  const breakdown = analysisData?.confidenceBreakdown || {};
+  const info = levelInfo(level);
+
+  const sortedClaims = useMemo(
+    () =>
+      [...claims].sort(
+        (a, b) =>
+          (Number(b.evidence_strength_score) || 0) -
+          (Number(a.evidence_strength_score) || 0)
+      ),
+    [claims]
+  );
+
+  const verdictCounts = useMemo(() => {
+    const counts = { high: 0, medium: 0, low: 0 };
+
+    claims.forEach((claim) => {
+      counts[claimVerdict(claim).tone] += 1;
+    });
+
+    return counts;
+  }, [claims]);
+
+  const downloadReport = () => {
+    const blob = new Blob(
+      [JSON.stringify(analysisData?.rawResponse || analysisData, null, 2)],
+      { type: "application/json" }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "researchclaimai-report.json";
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+
+  // ----------------------------------------------------------
+  // No analysis / failed analysis
+  // ----------------------------------------------------------
+
+  const hasResult =
+    topic && status !== "Analysis Failed" && status !== "Analyzing" && status !== "Not Analyzed";
+
+  if (!hasResult) {
+    return (
+      <>
+        <Navbar />
+        <main className="rc-page">
+          <div className="rc-container">
+            <section className="rc-card rc-empty">
+              <h1>No analysis to show yet</h1>
+              <p>
+                Enter a research topic or a benchmark question and
+                ResearchClaimAI will find papers, check their claims
+                and give you a trust score.
+              </p>
+              <button
+                type="button"
+                className="rc-button rc-button-primary"
+                onClick={() => navigate("/analysis")}
+              >
+                Start an analysis
+              </button>
+            </section>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // Report
+  // ----------------------------------------------------------
+
+  return (
+    <>
+      <Navbar />
+
+      <main className="rc-page">
+        <div className="rc-container">
+
+          {/* ---------- HEADER ---------- */}
+          <header className="rc-header">
+            <div>
+              <p className="rc-eyebrow">Analysis report</p>
+              <h1>{topic}</h1>
+              <p className="rc-meta">
+                {papers.length} {papers.length === 1 ? "paper" : "papers"} · {claims.length} {claims.length === 1 ? "claim" : "claims"} ·
+                analysed in {formatSeconds(analysisData?.analysisSeconds)}
+              </p>
+            </div>
+
+            <div className="rc-header-actions">
+              <button
+                type="button"
+                className="rc-button"
+                onClick={downloadReport}
+              >
+                Download report
+              </button>
+              <button
+                type="button"
+                className="rc-button rc-button-primary"
+                onClick={() => navigate("/analysis")}
+              >
+                New analysis
+              </button>
+            </div>
+          </header>
+
+
+          {/* ---------- SUMMARY ---------- */}
+          <section className="rc-card rc-summary">
+            <div className="rc-summary-text">
+              <Badge tone={info.tone}>{info.label}</Badge>
+              <h2>{info.headline}</h2>
+              <p>{info.text}</p>
+
+              <ul className="rc-summary-facts">
+                <li>
+                  <strong>{verdictCounts.high}</strong> claims supported
+                </li>
+                <li>
+                  <strong>{verdictCounts.medium}</strong> weakly supported
+                </li>
+                <li>
+                  <strong>{verdictCounts.low}</strong> not supported
+                </li>
+              </ul>
+            </div>
+
+            <ConfidenceRing score={score} tone={info.tone} />
+          </section>
+
+
+          {/* ---------- STAT TILES ---------- */}
+          <section className="rc-stats" aria-label="Key numbers">
+            <div className="rc-card rc-stat">
+              <strong>{papers.length}</strong>
+              <span>{papers.length === 1 ? "Paper" : "Papers"} analysed</span>
+            </div>
+            <div className="rc-card rc-stat">
+              <strong>{claims.length}</strong>
+              <span>Claims extracted</span>
+            </div>
+            <div className="rc-card rc-stat">
+              <strong>{comparisons.length}</strong>
+              <span>Cross-paper comparisons</span>
+            </div>
+            <div className="rc-card rc-stat">
+              <strong>{formatSeconds(analysisData?.analysisSeconds)}</strong>
+              <span>Analysis time</span>
+            </div>
+          </section>
+
+
+          {/* ---------- SCORE BREAKDOWN ---------- */}
+          <section className="rc-card">
+            <h2 className="rc-section-title">How the score was built</h2>
+            <p className="rc-section-note">
+              Four checks are combined into the overall score. Stronger
+              signals count for more.
+            </p>
+
+            <div className="rc-bars">
+              {SCORE_WEIGHTS.map((item) => {
+                const value = Number(breakdown[item.key]);
+                const tone = scoreTone(value);
+                const width = Number.isFinite(value)
+                  ? Math.min(Math.max(value, 0), 10) * 10
+                  : 0;
+
+                return (
+                  <div className="rc-bar-row" key={item.key}>
+                    <div className="rc-bar-head">
+                      <span className="rc-bar-label">
+                        {item.label}
+                        <small>counts for {item.weight}%</small>
+                      </span>
+                      <strong>{formatScore(value)} / 10</strong>
+                    </div>
+
+                    <div className="rc-bar-track">
+                      <div
+                        className={`rc-bar-fill rc-fill-${tone}`}
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+
+                    <p className="rc-bar-help">
+                      {item.key === "Contradiction" && comparisons.length === 0
+                        ? "No other paper reported a comparable result, so this check is neutral (5/10)."
+                        : item.help}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+
+          {/* ---------- CLAIMS ---------- */}
+          <section className="rc-card">
+            <h2 className="rc-section-title">Claims found</h2>
+            <p className="rc-section-note">
+              Each result a paper reports, checked against the evidence.
+              Select a row to see the reasoning and source text.
+            </p>
+
+            {claims.length === 0 ? (
+              <div className="rc-notice">
+                No numeric benchmark claims could be extracted from these
+                papers. Try a more specific question, for example
+                “MMLU accuracy of GPT-4”.
+              </div>
+            ) : (
+              <div className="rc-table-wrap">
+                <table className="rc-table">
+                  <thead>
+                    <tr>
+                      <th>Claim</th>
+                      <th>Result</th>
+                      <th>Evidence strength</th>
+                      <th>Verdict</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {sortedClaims.map((claim, index) => {
+                      const id = claim.claim_id ?? index;
+                      const isOpen = openClaim === id;
+                      const verdict = claimVerdict(claim);
+                      const source = claimSourceText(claim);
+
+                      return (
+                        <Fragment key={`claim-${id}`}>
+                          <tr
+                            className={isOpen ? "rc-row rc-row-open" : "rc-row"}
+                          >
+                            <td>
+                              <button
+                                type="button"
+                                className="rc-row-button"
+                                aria-expanded={isOpen}
+                                onClick={() => setOpenClaim(isOpen ? null : id)}
+                              >
+                                <span className="rc-claim-text">{claim.claim}</span>
+                                <span className="rc-claim-tags">
+                                  {claim.model_name && (
+                                    <span className="rc-tag">{claim.model_name}</span>
+                                  )}
+                                  {claim.benchmark && (
+                                    <span className="rc-tag">{claim.benchmark}</span>
+                                  )}
+                                </span>
+                              </button>
+                            </td>
+                            <td className="rc-num">{formatValue(claim)}</td>
+                            <td>
+                              <Badge tone={scoreTone(claim.evidence_strength_score)}>
+                                {formatScore(claim.evidence_strength_score)} / 10
+                              </Badge>
+                            </td>
+                            <td>
+                              <Badge tone={verdict.tone}>{verdict.label}</Badge>
+                            </td>
+                          </tr>
+
+                          {isOpen && (
+                            <tr className="rc-detail-row">
+                              <td colSpan={4}>
+                                <div className="rc-detail">
+                                  <p>
+                                    <strong>Paper:</strong> {claim.paper_title}
+                                  </p>
+
+                                  {claim.evidence_strength_reasoning && (
+                                    <p>
+                                      <strong>Why this strength score:</strong>{" "}
+                                      {claim.evidence_strength_reasoning}
+                                    </p>
+                                  )}
+
+                                  {source && (
+                                    <blockquote>{source}</blockquote>
+                                  )}
+
+                                  <p className="rc-detail-scores">
+                                    Verification {formatScore(claim.verification_score)} / 10
+                                    {" · "}
+                                    Skeptic {formatScore(claim.skeptic_score)} / 10
+                                  </p>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+
+          {/* ---------- COMPARISONS ---------- */}
+          <section className="rc-card">
+            <h2 className="rc-section-title">Cross-paper comparisons</h2>
+            <p className="rc-section-note">
+              Results are only compared when two papers report the same
+              model on the same benchmark and setting.
+            </p>
+
+            {comparisons.length === 0 ? (
+              <div className="rc-notice">
+                No comparable results were found, so nothing could be
+                confirmed or contradicted across papers. This is not a
+                sign that the claims are consistent. Try a query that
+                covers more papers evaluating the same model.
+              </div>
+            ) : (
+              <div className="rc-table-wrap">
+                <table className="rc-table">
+                  <thead>
+                    <tr>
+                      <th>Model and benchmark</th>
+                      <th>Paper A</th>
+                      <th>Paper B</th>
+                      <th>Gap</th>
+                      <th>Verdict</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {comparisons.map((item, index) => {
+                      const agrees = item.relation_type === "Agrees";
+                      const tone = agrees
+                        ? "high"
+                        : item.severity === "High"
+                        ? "low"
+                        : "medium";
+
+                      return (
+                        <tr key={index}>
+                          <td>
+                            <span className="rc-claim-text">
+                              {item.model_name || "Same model"}
+                            </span>
+                            <span className="rc-claim-tags">
+                              <span className="rc-tag">{item.benchmark_name}</span>
+                              {item.evaluation_setting && (
+                                <span className="rc-tag">{item.evaluation_setting}</span>
+                              )}
+                            </span>
+                          </td>
+                          <td className="rc-num">{item.reported_value_a}</td>
+                          <td className="rc-num">{item.reported_value_b}</td>
+                          <td className="rc-num">{item.value_diff}</td>
+                          <td>
+                            <Badge tone={tone}>
+                              {agrees
+                                ? "Agrees"
+                                : `Contradicts${item.severity ? ` (${item.severity})` : ""}`}
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+
+          {/* ---------- SOURCES ---------- */}
+          <section className="rc-card">
+            <h2 className="rc-section-title">Papers analysed</h2>
+            <p className="rc-section-note">
+              The sources behind this report.
+            </p>
+
+            <ul className="rc-papers">
+              {papers.map((paper, index) => {
+                const id = paper.id ?? index;
+                const isOpen = openPaper === id;
+                const abstract = paper.abstract || "";
+                const link = paper.url || paper.pdf_url;
+
+                return (
+                  <li className="rc-paper" key={id}>
+                    <h3>
+                      {link ? (
+                        <a href={link} target="_blank" rel="noreferrer">
+                          {paper.title}
+                        </a>
+                      ) : (
+                        paper.title
+                      )}
+                    </h3>
+
+                    <p className="rc-paper-meta">
+                      {[paper.authors, paper.year, paper.source]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+
+                    {abstract && (
+                      <>
+                        <p className={isOpen ? "rc-abstract" : "rc-abstract rc-clamp"}>
+                          {abstract}
+                        </p>
+                        <button
+                          type="button"
+                          className="rc-link-button"
+                          onClick={() => setOpenPaper(isOpen ? null : id)}
+                        >
+                          {isOpen ? "Show less" : "Read more"}
+                        </button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+        </div>
+      </main>
+
+      <Footer />
+    </>
+  );
+}
 
 export default Dashboard;

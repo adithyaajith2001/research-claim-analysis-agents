@@ -515,3 +515,41 @@
     }
 
 }
+/* ---------- error state + actions ---------- */
+.error-logo {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.loading-actions {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 28px;
+}
+
+.loading-button {
+  padding: 12px 22px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: #e5e7eb;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.loading-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.loading-button.primary {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+.loading-button.primary:hover {
+  background: #2563eb;
+}

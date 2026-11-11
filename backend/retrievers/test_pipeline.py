@@ -879,9 +879,21 @@ def run_contradiction_regression_test() -> dict:
 
 def run_pipeline(
     query: str = LIVE_QUERY,
-    max_results: int = 8
+    max_results: int = 8,
+    progress_callback=None,
 ):
     pipeline_start = time.perf_counter()
+
+    def report(stage, percent, message):
+        """Tell the caller (the API) what the pipeline is doing right now."""
+        if progress_callback is None:
+            return
+        try:
+            progress_callback(stage, percent, message)
+        except Exception:
+            pass  # progress reporting must never break the analysis
+
+    report("retrieval", 3, "Searching arXiv, Semantic Scholar and CrossRef")
 
     # Start this development run with a clean database so
     # contradiction detection only sees the current run.
@@ -920,11 +932,76 @@ def run_pipeline(
             f"Papers retrieved: {len(papers)}"
         )
 
+        report("retrieval", 15, f"Found {len(papers)} papers")
+
+        # ====================================================
+        # PRE-STEP: EXTRACT CLAIMS FROM ALL PAPERS IN PARALLEL
+        # ====================================================
+        # Claim extraction is slow (several Gemini calls per paper) and
+        # network-bound, so papers are read at the same time instead of
+        # one after another. Nothing here touches the database.
+
+        prefetched_claims = {}
+        papers_with_text = [
+            paper for paper in papers
+            if (paper.get("full_text") or paper.get("abstract") or "").strip()
+        ]
+
+        if papers_with_text:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+
+            def _extract_one(paper):
+                text = paper.get("full_text") or paper.get("abstract") or ""
+                started = time.perf_counter()
+                claims_found = extract_claims_from_text(
+                    paper_id=paper["id"],
+                    text=text,
+                    client=client
+                )
+                print(
+                    f"[timing] Claim extraction for paper "
+                    f"{paper['id']}: {time.perf_counter() - started:.2f}s"
+                )
+                return claims_found
+
+            finished = 0
+            total_to_read = len(papers_with_text)
+
+            with ThreadPoolExecutor(max_workers=3) as pool:
+                future_to_paper = {
+                    pool.submit(_extract_one, paper): paper
+                    for paper in papers_with_text
+                }
+
+                for future in as_completed(future_to_paper):
+                    paper = future_to_paper[future]
+                    finished += 1
+
+                    try:
+                        prefetched_claims[paper["id"]] = future.result()
+                    except Exception as error:
+                        print(
+                            f"[warning] Claim extraction failed for "
+                            f"{paper['id']}: {error}"
+                        )
+                        prefetched_claims[paper["id"]] = []
+
+                    report(
+                        "extraction",
+                        15 + int(45 * finished / total_to_read),
+                        f"Read {finished} of {total_to_read} papers",
+                    )
+
         # ====================================================
         # STEP 2: PROCESS EACH PAPER
         # ====================================================
 
-        for paper in papers:
+        for paper_index, paper in enumerate(papers):
+            report(
+                "scoring",
+                60 + int(25 * paper_index / max(len(papers), 1)),
+                f"Checking claims from paper {paper_index + 1} of {len(papers)}",
+            )
 
             print()
             print("=" * 70)
@@ -969,11 +1046,14 @@ def run_pipeline(
             )
 
             stage_start = time.perf_counter()
-            claims = extract_claims_from_text(
-                paper_id=paper["id"],
-                text=paper_text,
-                client=client
-            )
+            if paper["id"] in prefetched_claims:
+                claims = prefetched_claims[paper["id"]]
+            else:
+                claims = extract_claims_from_text(
+                    paper_id=paper["id"],
+                    text=paper_text,
+                    client=client
+                )
 
             print(f"[timing] Claim extraction for this paper: {time.perf_counter() - stage_start:.2f}s")
             print(
@@ -1253,6 +1333,16 @@ def run_pipeline(
                             "value_type"
                         ),
 
+                    "model_name":
+                        claim.get(
+                            "model_name"
+                        ),
+
+                    "evaluation_setting":
+                        claim.get(
+                            "evaluation_setting"
+                        ),
+
                     "reported_value":
                         claim.get(
                             "reported_value"
@@ -1284,6 +1374,7 @@ def run_pipeline(
 
         print()
         print("=" * 70)
+        report("contradictions", 88, "Comparing claims across papers")
         print("STEP 8: DETECTING CONTRADICTIONS")
         print("=" * 70)
 
@@ -1329,6 +1420,7 @@ def run_pipeline(
 
         print()
         print("=" * 70)
+        report("confidence", 95, "Calculating the final trust score")
         print("STEP 9: CALCULATING OVERALL CONFIDENCE")
         print("=" * 70)
 

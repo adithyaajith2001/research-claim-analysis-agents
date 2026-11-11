@@ -1,6 +1,7 @@
 import React, {
   useContext,
   useEffect,
+  useRef,
   useState
 } from "react";
 
@@ -14,7 +15,8 @@ import {
   FaFileAlt,
   FaBrain,
   FaCheckCircle,
-  FaChartLine
+  FaChartLine,
+  FaExclamationTriangle
 } from "react-icons/fa";
 
 import {
@@ -30,35 +32,52 @@ import "../../styles/loading.css";
 
 // ============================================================
 // ANALYSIS STEPS
+// Each backend stage name maps to one visible step.
 // ============================================================
 
 const steps = [
   {
+    key: "retrieval",
     icon: <FaSearch />,
-    title: "Literature Retrieval",
-    description: "Searching scientific databases"
+    title: "Find Papers",
+    description: "Searching arXiv, Semantic Scholar and CrossRef"
   },
   {
+    key: "extraction",
     icon: <FaFileAlt />,
-    title: "Claim Extraction",
-    description: "Extracting claims and evidence"
+    title: "Read Papers",
+    description: "Finding the results each paper claims"
   },
   {
+    key: "scoring",
     icon: <FaBrain />,
-    title: "AI Reasoning",
-    description: "Analyzing relationships"
+    title: "Check Evidence",
+    description: "Testing each claim against its evidence"
   },
   {
+    key: "contradictions",
     icon: <FaCheckCircle />,
-    title: "Evidence Verification",
-    description: "Comparing supporting studies"
+    title: "Compare Papers",
+    description: "Looking for agreement and conflict"
   },
   {
+    key: "confidence",
     icon: <FaChartLine />,
-    title: "Confidence Score",
-    description: "Generating credibility score"
+    title: "Trust Score",
+    description: "Combining everything into one score"
   }
 ];
+
+function stepIndexForStage(stage) {
+  const index = steps.findIndex((step) => step.key === stage);
+  return index === -1 ? 0 : index;
+}
+
+function formatElapsed(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
 
 
 // ============================================================
@@ -66,822 +85,238 @@ const steps = [
 // ============================================================
 
 const Loading = () => {
-
-  const [activeStep, setActiveStep] = useState(0);
-
-  const [analysisStarted, setAnalysisStarted] =
-    useState(false);
-
   const navigate = useNavigate();
-
   const location = useLocation();
-
-
-  // ==========================================================
-  // ANALYSIS CONTEXT
-  // ==========================================================
 
   const {
     analysisData,
     updateAnalysisData
   } = useContext(AnalysisContext);
 
-
-  // ==========================================================
-  // GET TOPIC
-  // ==========================================================
-
   const topic =
     location.state?.topic ||
     analysisData?.topic ||
     "Research Topic";
 
+  const startedRef = useRef(false);
 
-  // ==========================================================
-  // STEP PROGRESS + BACKEND ANALYSIS
-  // ==========================================================
+  const [progress, setProgress] = useState({
+    stage: "retrieval",
+    percent: 2,
+    message: "Starting analysis"
+  });
+  const [elapsed, setElapsed] = useState(0);
+  const [errorMessage, setErrorMessage] = useState("");
+
+
+  // ----------------------------------------------------------
+  // Elapsed-time clock
+  // ----------------------------------------------------------
 
   useEffect(() => {
-
-    console.log(
-      "Loading page received topic:",
-      topic
-    );
-
-
-    // --------------------------------------------------------
-    // MOVE THROUGH VISUAL PIPELINE
-    // --------------------------------------------------------
-
-    if (activeStep < steps.length - 1) {
-
-      const timer = setTimeout(() => {
-
-        setActiveStep(
-          previousStep =>
-            previousStep + 1
-        );
-
-      }, 1800);
-
-
-      return () => {
-
-        clearTimeout(timer);
-
-      };
-
-    }
-
-
-    // --------------------------------------------------------
-    // PREVENT DUPLICATE API REQUEST
-    // --------------------------------------------------------
-
-    if (analysisStarted) {
-
+    if (errorMessage) {
       return undefined;
-
     }
 
+    const timer = setInterval(() => {
+      setElapsed((previous) => previous + 1);
+    }, 1000);
 
-    setAnalysisStarted(true);
-
-
-    // ========================================================
-    // BACKEND ANALYSIS
-    // ========================================================
-
-    const analyze = async () => {
-
-      console.log(
-        "======================================"
-      );
-
-      console.log(
-        "Starting backend analysis"
-      );
-
-      console.log(
-        "Topic:",
-        topic
-      );
-
-      console.log(
-        "======================================"
-      );
+    return () => clearInterval(timer);
+  }, [errorMessage]);
 
 
+  // ----------------------------------------------------------
+  // Run the analysis once and follow its real progress
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    if (startedRef.current) {
+      return;
+    }
+
+    startedRef.current = true;
+
+    const run = async () => {
       try {
-
-        // ====================================================
-        // CALL FASTAPI
-        // ====================================================
-
-        const result =
-          await analyzeTopic(topic);
-
-
-        console.log(
-          "======================================"
-        );
-
-        console.log(
-          "Backend result received:"
-        );
-
-        console.log(
-          result
-        );
-
-        console.log(
-          "======================================"
-        );
-
-
-        // ====================================================
-        // PAPERS
-        // ====================================================
-
-        const retrievedPapers =
-          Array.isArray(result?.papers)
-            ? result.papers
-            : [];
-
-
-        const paperCount =
-          Number.isFinite(
-            Number(
-              result?.papers_retrieved
-            )
-          )
-            ? Number(
-                result.papers_retrieved
-              )
-            : retrievedPapers.length;
-
-
-        // ====================================================
-        // CONFIDENCE
-        // ====================================================
-
-        // Backend returns:
-        //
-        // confidence: {
-        //   overall_score: 7.83,
-        //   confidence_level: "Medium",
-        //   breakdown: {...}
-        // }
-
-        const confidence =
-          Number(
-            result?.confidence?.overall_score
-          );
-
-        const safeConfidence =
-          Number.isFinite(confidence)
-            ? confidence
-            : 0;
-
-
-        const confidenceLevel =
-          result?.confidence?.confidence_level ||
-          "Low";
-
-
-        const confidenceBreakdown =
-          result?.confidence?.breakdown ||
-          {};
-
-
-        // ====================================================
-        // CLAIMS
-        // ====================================================
-
-        // Backend returns claims as an ARRAY.
-
-        const extractedClaims =
-          Array.isArray(result?.claims)
-            ? result.claims
-            : [];
-
-
-        const claimCount =
-          Number.isFinite(
-            Number(result?.claims_extracted)
-          )
-            ? Number(result.claims_extracted)
-            : extractedClaims.length;
-
-
-        // ====================================================
-        // SUPPORTING PAPERS
-        // ====================================================
-
-        const supportingPapers =
-          Array.isArray(
-            result?.supportingPapers
-          )
-            ? result.supportingPapers
-            : Array.isArray(
-                result?.supporting_papers
-              )
-                ? result.supporting_papers
-                : [];
-
-
-        // ====================================================
-        // CONTRADICTING PAPERS
-        // ====================================================
-
-        const contradictingPapers =
-          Array.isArray(
-            result?.contradictingPapers
-          )
-            ? result.contradictingPapers
-            : Array.isArray(
-                result?.contradicting_papers
-              )
-                ? result.contradicting_papers
-                : [];
-
-
-        // ====================================================
-        // NEUTRAL PAPERS
-        // ====================================================
-
-        const neutralPapers =
-          Array.isArray(
-            result?.neutralPapers
-          )
-            ? result.neutralPapers
-            : Array.isArray(
-                result?.neutral_papers
-              )
-                ? result.neutral_papers
-                : [];
-
-
-        // ====================================================
-        // CONTRADICTIONS
-        // ====================================================
-
-        const contradictions =
-          Array.isArray(result?.contradictions)
-            ? result.contradictions
-            : [];
-
-
-        // ====================================================
-        // SUMMARY
-        // ====================================================
-
-        const summary =
-          result?.summary ||
-          `ResearchClaimAI analyzed ${paperCount} research papers related to "${topic}".`;
-
-
-        // ====================================================
-        // DEBUG
-        // ====================================================
-
-        console.log(
-          "---------------- ANALYSIS DATA ----------------"
-        );
-
-        console.log(
-          "Topic:",
-          result?.query || topic
-        );
-
-        console.log(
-          "Papers retrieved:",
-          paperCount
-        );
-
-        console.log(
-          "Claims extracted:",
-          claimCount
-        );
-
-        console.log(
-          "Claim objects:",
-          extractedClaims
-        );
-
-        console.log(
-          "Confidence:",
-          safeConfidence
-        );
-
-        console.log(
-          "Confidence level:",
-          confidenceLevel
-        );
-
-        console.log(
-          "Confidence breakdown:",
-          confidenceBreakdown
-        );
-
-        console.log(
-          "Supporting papers:",
-          supportingPapers
-        );
-
-        console.log(
-          "Contradicting papers:",
-          contradictingPapers
-        );
-
-        console.log(
-          "Neutral papers:",
-          neutralPapers
-        );
-
-        console.log(
-          "Contradictions:",
-          contradictions
-        );
-
-        console.log(
-          "Paper list:",
-          retrievedPapers
-        );
-
-        console.log(
-          "------------------------------------------------"
-        );
-
-
-        // ====================================================
-        // SAVE COMPLETE RESULT IN CONTEXT
-        // ====================================================
-
-        updateAnalysisData({
-
-          // --------------------------------------------------
-          // TOPIC
-          // --------------------------------------------------
-
-          topic:
-            result?.query ||
-            topic,
-
-
-          // --------------------------------------------------
-          // CONFIDENCE
-          // --------------------------------------------------
-
-          confidence:
-            safeConfidence,
-
-          confidenceLevel:
-            confidenceLevel,
-
-          confidenceBreakdown:
-            confidenceBreakdown,
-
-
-          // --------------------------------------------------
-          // CLAIM COUNT
-          // --------------------------------------------------
-
-          claims:
-            claimCount,
-
-          claimsExtracted:
-            claimCount,
-
-
-          // --------------------------------------------------
-          // ACTUAL CLAIM OBJECTS
-          // --------------------------------------------------
-
-          extractedClaims:
-            extractedClaims,
-
-
-          // --------------------------------------------------
-          // PAPER COUNT
-          // --------------------------------------------------
-
-          papers:
-            paperCount,
-
-          papers_retrieved:
-            paperCount,
-
-
-          // --------------------------------------------------
-          // ACTUAL PAPERS
-          // --------------------------------------------------
-
-          paperList:
-            retrievedPapers,
-
-
-          // --------------------------------------------------
-          // SUMMARY
-          // --------------------------------------------------
-
-          summary:
-            summary,
-
-
-          // --------------------------------------------------
-          // STATUS
-          // --------------------------------------------------
-
-          status:
-            result?.status === "success"
-              ? "Analyzed"
-              : result?.status ||
-                "Analyzed",
-
-
-          // --------------------------------------------------
-          // SUPPORTING PAPERS
-          // --------------------------------------------------
-
-          supportingPapers:
-            supportingPapers,
-
-
-          // --------------------------------------------------
-          // CONTRADICTING PAPERS
-          // --------------------------------------------------
-
-          contradictingPapers:
-            contradictingPapers,
-
-
-          // --------------------------------------------------
-          // NEUTRAL PAPERS
-          // --------------------------------------------------
-
-          neutralPapers:
-            neutralPapers,
-
-
-          // --------------------------------------------------
-          // CONTRADICTIONS
-          // --------------------------------------------------
-
-          contradictions:
-            contradictions,
-
-
-          // --------------------------------------------------
-          // RAW BACKEND RESPONSE
-          // --------------------------------------------------
-
-          rawResponse:
-            result
-
-        });
-
-
-        // ====================================================
-        // GO TO DASHBOARD
-        // ====================================================
-
-        navigate(
-          "/dashboard",
-          {
-            replace: true
+        const result = await analyzeTopic(
+          topic,
+          5,
+          (update) => {
+            setProgress({
+              stage: update.stage,
+              percent: update.percent,
+              message: update.message
+            });
           }
         );
 
+        const confidenceScore = Number(result.confidence?.overall_score);
+
+        updateAnalysisData({
+          topic: result.query || topic,
+          confidence: Number.isFinite(confidenceScore)
+            ? confidenceScore
+            : 0,
+          confidenceLevel: result.confidence?.confidence_level || "Low",
+          confidenceBreakdown: result.confidence?.breakdown || {},
+          claims: result.claims_extracted,
+          claimsExtracted: result.claims_extracted,
+          extractedClaims: result.claims,
+          papers: result.papers_retrieved,
+          papers_retrieved: result.papers_retrieved,
+          paperList: result.papers,
+          summary: result.summary,
+          status: "Analyzed",
+          supportingPapers: result.supportingPapers,
+          contradictingPapers: result.contradictingPapers,
+          neutralPapers: result.neutralPapers,
+          contradictions: result.contradictions,
+          analysisSeconds: result.analysis_seconds,
+          rawResponse: result.rawResponse
+        });
+
+        navigate("/dashboard", { replace: true });
       } catch (error) {
+        console.error("ResearchClaimAI analysis failed:", error);
 
-        console.error(
-          "======================================"
+        setErrorMessage(
+          error?.message ||
+            "Something went wrong while analysing this topic."
         );
-
-        console.error(
-          "ANALYSIS FAILED"
-        );
-
-        console.error(
-          error
-        );
-
-        console.error(
-          "======================================"
-        );
-
-
-        // ====================================================
-        // SAVE FAILURE STATE
-        // ====================================================
-
-        updateAnalysisData({
-
-          topic:
-            topic,
-
-          confidence:
-            0,
-
-          confidenceLevel:
-            "Low",
-
-          confidenceBreakdown:
-            {},
-
-          papers:
-            0,
-
-          papers_retrieved:
-            0,
-
-          paperList:
-            [],
-
-          claims:
-            0,
-
-          claimsExtracted:
-            0,
-
-          extractedClaims:
-            [],
-
-          summary:
-            "Unable to retrieve research papers for this topic.",
-
-          status:
-            "Analysis Failed",
-
-          supportingPapers:
-            [],
-
-          contradictingPapers:
-            [],
-
-          neutralPapers:
-            [],
-
-          contradictions:
-            [],
-
-          rawResponse:
-            null
-
-        });
-
-
-        // ====================================================
-        // GO TO DASHBOARD
-        // ====================================================
-
-        navigate(
-          "/dashboard",
-          {
-            replace: true
-          }
-        );
-
       }
-
     };
 
-
-    analyze();
-
-
-    return undefined;
-
-  }, [
-    activeStep,
-    analysisStarted,
-    navigate,
-    topic,
-    updateAnalysisData
-  ]);
+    run();
+  }, [navigate, topic, updateAnalysisData]);
 
 
-  // ==========================================================
-  // PROGRESS
-  // ==========================================================
+  const activeStep = stepIndexForStage(progress.stage);
+  const percent = Math.min(Math.max(Number(progress.percent) || 0, 0), 100);
 
-  const progress =
-  activeStep >= steps.length - 1
-    ? (analysisStarted ? 90 : 80)
-    : ((activeStep + 1) / steps.length) * 80;
 
-  // ==========================================================
-  // UI
-  // ==========================================================
+  // ----------------------------------------------------------
+  // Error screen
+  // ----------------------------------------------------------
+
+  if (errorMessage) {
+    return (
+      <div className="loading-page">
+        <div className="loading-card">
+          <div className="loading-header">
+            <div className="loading-logo error-logo">
+              <FaExclamationTriangle />
+            </div>
+            <h1>Analysis could not finish</h1>
+            <p>{errorMessage}</p>
+          </div>
+
+          <div className="loading-topic-box">
+            <span>RESEARCH TOPIC</span>
+            <h2>{topic}</h2>
+          </div>
+
+          <div className="loading-actions">
+            <button
+              type="button"
+              className="loading-button primary"
+              onClick={() => navigate("/analysis")}
+            >
+              Try another topic
+            </button>
+            <button
+              type="button"
+              className="loading-button"
+              onClick={() => window.location.reload()}
+            >
+              Retry this topic
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+  // ----------------------------------------------------------
+  // Progress screen
+  // ----------------------------------------------------------
 
   return (
-
     <div className="loading-page">
-
       <div className="loading-card">
 
-
-        {/* ====================================================
-            HEADER
-        ==================================================== */}
-
         <div className="loading-header">
-
           <div className="loading-logo">
-
             <FaBrain />
-
           </div>
-
-
-          <h1>
-            ResearchClaimAI
-          </h1>
-
-
-          <p>
-            Multi-Agent AI Research Analysis
-          </p>
-
+          <h1>ResearchClaimAI</h1>
+          <p>Multi-Agent AI Research Analysis</p>
         </div>
-
-
-        {/* ====================================================
-            TOPIC
-        ==================================================== */}
 
         <div className="loading-topic-box">
-
-          <span>
-            ANALYZING RESEARCH TOPIC
-          </span>
-
-
-          <h2>
-            {topic}
-          </h2>
-
+          <span>ANALYZING RESEARCH TOPIC</span>
+          <h2>{topic}</h2>
         </div>
-
-
-        {/* ====================================================
-            PIPELINE
-        ==================================================== */}
 
         <div className="pipeline">
+          {steps.map((step, index) => {
+            const isActive = index === activeStep;
+            const isCompleted = index < activeStep;
 
-          {steps.map(
-            (step, index) => {
+            return (
+              <div
+                key={step.key}
+                className={
+                  "pipeline-step" +
+                  (isActive ? " active" : "") +
+                  (isCompleted ? " completed" : "")
+                }
+              >
+                <div className="pipeline-icon">{step.icon}</div>
 
-              const isActive =
-                index === activeStep;
-
-
-              const isCompleted =
-                index < activeStep;
-
-
-              return (
-
-                <div
-                  key={index}
-                  className={`
-                    pipeline-step
-                    ${isActive ? "active" : ""}
-                    ${isCompleted ? "completed" : ""}
-                  `}
-                >
-
-
-                  {/* ICON */}
-
-                  <div className="pipeline-icon">
-
-                    {step.icon}
-
-                  </div>
-
-
-                  {/* NUMBER */}
-
-                  <div className="step-number">
-
-                    {isCompleted
-                      ? "✓"
-                      : `0${index + 1}`
-                    }
-
-                  </div>
-
-
-                  {/* TITLE */}
-
-                  <h3>
-                    {step.title}
-                  </h3>
-
-
-                  {/* DESCRIPTION */}
-
-                  <p>
-                    {step.description}...
-                  </p>
-
-
-                  {/* ACTIVE STATUS */}
-
-              {isActive && (
-  <div className="step-status">
-    {index === steps.length - 1 && analysisStarted
-      ? "Analyzing research data..."
-      : "Processing"}
-  </div>
-)}
-
-
-                  {/* COMPLETED STATUS */}
-
-                  {isCompleted && (
-
-                    <div
-                      className="
-                        step-status
-                        completed-status
-                      "
-                    >
-
-                      Completed
-
-                    </div>
-
-                  )}
-
+                <div className="step-number">
+                  {isCompleted ? "✓" : `0${index + 1}`}
                 </div>
 
-              );
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
 
-            }
-          )}
+                {isActive && (
+                  <div className="step-status">In progress</div>
+                )}
 
+                {isCompleted && (
+                  <div className="step-status completed-status">
+                    Done
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-
-
-        {/* ====================================================
-            PROGRESS
-        ==================================================== */}
 
         <div className="progress-section">
-
           <div className="progress-info">
-
-            <span>
-              Analysis Progress
-            </span>
-
-
-            <strong>
-              {Math.round(progress)}%
-            </strong>
-
+            <span>{progress.message}</span>
+            <strong>{Math.round(percent)}%</strong>
           </div>
-
 
           <div className="progress-bar">
-
             <div
               className="progress-fill"
-              style={{
-                width:
-                  `${progress}%`
-              }}
+              style={{ width: `${percent}%` }}
             />
-
           </div>
-
         </div>
 
-
-        {/* ====================================================
-            FOOTER
-        ==================================================== */}
-
         <p className="loading-footer">
-
-          ResearchClaimAI is processing
-          scientific evidence using
-          multiple intelligent agents.
-
+          Time elapsed {formatElapsed(elapsed)}. A full analysis usually
+          takes 2–4 minutes. Please keep this tab open.
         </p>
-
-
       </div>
-
     </div>
-
   );
-
 };
-
 
 export default Loading;

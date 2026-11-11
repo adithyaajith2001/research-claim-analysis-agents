@@ -1,8 +1,12 @@
 import truststore
 truststore.inject_into_ssl()
+import html
 import os
 import sys
+import threading
+import time
 import traceback
+import uuid
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -437,7 +441,112 @@ def build_evidence_groups(claims):
 
 
 # ============================================================
-# COMPLETE ANALYSIS
+# HELPERS: CLEAN TEXT + BUILD API RESPONSE
+# ============================================================
+
+def unescape_strings(value):
+    """
+    Papers from CrossRef/arXiv sometimes contain HTML entities such as
+    '&amp;' or '&lt;'. Decode them everywhere in the response so the
+    dashboard shows plain text.
+    """
+
+    if isinstance(value, str):
+        return html.unescape(value)
+
+    if isinstance(value, list):
+        return [unescape_strings(item) for item in value]
+
+    if isinstance(value, dict):
+        return {
+            key: unescape_strings(item)
+            for key, item in value.items()
+        }
+
+    return value
+
+
+def build_analysis_response(query, pipeline_output, elapsed_seconds):
+    """
+    Turn the raw pipeline result into the JSON the React dashboard reads.
+    """
+
+    result = normalize_pipeline_result(pipeline_output)
+
+    if not result:
+        raise RuntimeError("Pipeline returned an empty result.")
+
+    papers = result.get("papers", [])
+    claims = result.get("claims", [])
+    contradictions = result.get("contradictions", [])
+    confidence = result.get("confidence", {})
+
+    if not isinstance(papers, list):
+        papers = []
+
+    if not isinstance(claims, list):
+        claims = []
+
+    if not isinstance(contradictions, list):
+        contradictions = []
+
+    if not isinstance(confidence, dict):
+        confidence = {}
+
+    (
+        supporting_papers,
+        contradicting_papers,
+        neutral_papers,
+    ) = build_evidence_groups(claims)
+
+    overall_score = confidence.get("overall_score", 0)
+    confidence_level = confidence.get("confidence_level", "Low")
+
+    summary = (
+        f"Analysis completed for '{query}'. "
+        f"The system retrieved {len(papers)} research papers and "
+        f"extracted {len(claims)} benchmark-related claims. "
+        f"{len(contradictions)} cross-paper comparison records were "
+        f"generated. The aggregated confidence score is "
+        f"{overall_score}/10 ({confidence_level})."
+    )
+
+    response = {
+        "status": "success",
+        "query": result.get("query", query),
+        "papers_retrieved": result.get("papers_retrieved", len(papers)),
+        "papers": papers,
+        "claims_extracted": result.get("claims_extracted", len(claims)),
+        "claims": claims,
+        "supportingPapers": supporting_papers,
+        "contradictingPapers": contradicting_papers,
+        "neutralPapers": neutral_papers,
+        "contradictions": contradictions,
+        "confidence": confidence,
+        "summary": summary,
+        "analysis_seconds": round(float(elapsed_seconds), 1),
+    }
+
+    print()
+    print("=" * 70)
+    print("API ANALYSIS COMPLETED")
+    print("=" * 70)
+    print(f"Papers: {response['papers_retrieved']}")
+    print(f"Claims: {response['claims_extracted']}")
+    print(f"Supporting evidence: {len(supporting_papers)}")
+    print(f"Contradicting evidence: {len(contradicting_papers)}")
+    print(f"Neutral evidence: {len(neutral_papers)}")
+    print(f"Contradiction pairs: {len(contradictions)}")
+    print(f"Overall confidence: {overall_score}/10")
+    print(f"Confidence level: {confidence_level}")
+    print(f"Analysis time: {response['analysis_seconds']}s")
+    print("=" * 70)
+
+    return unescape_strings(response)
+
+
+# ============================================================
+# COMPLETE ANALYSIS (one request, waits for the full result)
 # ============================================================
 
 @app.post("/api/analyze")
@@ -445,14 +554,9 @@ def analyze(
     request: AnalysisRequest
 ):
 
-    # --------------------------------------------------------
-    # VALIDATE QUERY
-    # --------------------------------------------------------
-
     query = request.query.strip()
 
     if not query:
-
         raise HTTPException(
             status_code=400,
             detail="Research query cannot be empty."
@@ -462,225 +566,23 @@ def analyze(
     print("=" * 70)
     print("RESEARCHCLAIMAI ANALYSIS REQUEST")
     print("=" * 70)
-    print(
-        f"Query: {query}"
-    )
-    print(
-        f"Max results: {request.max_results}"
-    )
+    print(f"Query: {query}")
+    print(f"Max results: {request.max_results}")
     print("=" * 70)
 
     try:
-
-        # ====================================================
-        # RUN COMPLETE MULTI-AGENT PIPELINE
-        # ====================================================
+        started = time.perf_counter()
 
         pipeline_output = run_pipeline(
             query=query,
             max_results=request.max_results,
         )
 
-        # ----------------------------------------------------
-        # NORMALIZE PIPELINE OUTPUT
-        # ----------------------------------------------------
-
-        result = normalize_pipeline_result(
-            pipeline_output
+        return build_analysis_response(
+            query,
+            pipeline_output,
+            time.perf_counter() - started,
         )
-
-        if not result:
-
-            raise RuntimeError(
-                "Pipeline returned an empty result."
-            )
-
-        # ====================================================
-        # EXTRACT PIPELINE DATA
-        # ====================================================
-
-        papers = result.get(
-            "papers",
-            []
-        )
-
-        claims = result.get(
-            "claims",
-            []
-        )
-
-        contradictions = result.get(
-            "contradictions",
-            []
-        )
-
-        confidence = result.get(
-            "confidence",
-            {}
-        )
-
-        if not isinstance(
-            papers,
-            list
-        ):
-            papers = []
-
-        if not isinstance(
-            claims,
-            list
-        ):
-            claims = []
-
-        if not isinstance(
-            contradictions,
-            list
-        ):
-            contradictions = []
-
-        if not isinstance(
-            confidence,
-            dict
-        ):
-            confidence = {}
-
-        # ====================================================
-        # BUILD EVIDENCE GROUPS
-        # ====================================================
-
-        (
-            supporting_papers,
-            contradicting_papers,
-            neutral_papers,
-        ) = build_evidence_groups(
-            claims
-        )
-
-        # ====================================================
-        # BUILD SUMMARY
-        # ====================================================
-
-        overall_score = confidence.get(
-            "overall_score",
-            0
-        )
-
-        confidence_level = confidence.get(
-            "confidence_level",
-            "Low"
-        )
-
-        summary = (
-            f"Analysis completed for '{query}'. "
-            f"The system retrieved {len(papers)} "
-            f"research papers and extracted "
-            f"{len(claims)} benchmark-related claims. "
-            f"{len(contradictions)} cross-paper "
-            f"comparison records were generated. "
-            f"The aggregated confidence score is "
-            f"{overall_score}/10 "
-            f"({confidence_level})."
-        )
-
-        # ====================================================
-        # FINAL API RESPONSE
-        # ====================================================
-
-        response = {
-
-            "status": "success",
-
-            "query": result.get(
-                "query",
-                query
-            ),
-
-            "papers_retrieved": result.get(
-                "papers_retrieved",
-                len(papers)
-            ),
-
-            "papers": papers,
-
-            "claims_extracted": result.get(
-                "claims_extracted",
-                len(claims)
-            ),
-
-            "claims": claims,
-
-            "supportingPapers": (
-                supporting_papers
-            ),
-
-            "contradictingPapers": (
-                contradicting_papers
-            ),
-
-            "neutralPapers": (
-                neutral_papers
-            ),
-
-            "contradictions": (
-                contradictions
-            ),
-
-            "confidence": confidence,
-
-            "summary": summary,
-        }
-
-        # ====================================================
-        # SERVER LOG
-        # ====================================================
-
-        print()
-        print("=" * 70)
-        print("API ANALYSIS COMPLETED")
-        print("=" * 70)
-
-        print(
-            f"Papers: "
-            f"{response['papers_retrieved']}"
-        )
-
-        print(
-            f"Claims: "
-            f"{response['claims_extracted']}"
-        )
-
-        print(
-            f"Supporting evidence: "
-            f"{len(supporting_papers)}"
-        )
-
-        print(
-            f"Contradicting evidence: "
-            f"{len(contradicting_papers)}"
-        )
-
-        print(
-            f"Neutral evidence: "
-            f"{len(neutral_papers)}"
-        )
-
-        print(
-            f"Contradiction pairs: "
-            f"{len(contradictions)}"
-        )
-
-        print(
-            f"Overall confidence: "
-            f"{confidence.get('overall_score', 0)}/10"
-        )
-
-        print(
-            f"Confidence level: "
-            f"{confidence.get('confidence_level', 'Low')}"
-        )
-
-        print("=" * 70)
-
-        return response
 
     except HTTPException:
         raise
@@ -691,17 +593,171 @@ def analyze(
         print("=" * 70)
         print("API ANALYSIS FAILED")
         print("=" * 70)
-
-        print(
-            f"Error: {error}"
-        )
-
+        print(f"Error: {error}")
         traceback.print_exc()
 
         raise HTTPException(
             status_code=500,
             detail=str(error)
         )
+
+
+# ============================================================
+# BACKGROUND JOBS (used by the dashboard: live progress)
+# ============================================================
+#
+# POST /api/jobs        -> starts an analysis, returns {job_id}
+# GET  /api/jobs/{id}   -> {status, stage, percent, message,
+#                           elapsed_seconds, result (when done)}
+#
+# Only ONE analysis can run at a time, because each run resets the
+# working database so contradiction detection sees only that run.
+
+JOBS = {}
+JOBS_LOCK = threading.Lock()
+ACTIVE_JOB = {"id": None}
+
+
+def _run_job(job_id, query, max_results):
+
+    job = JOBS[job_id]
+
+    def progress(stage, percent, message):
+        job["stage"] = stage
+        job["percent"] = percent
+        job["message"] = message
+
+    try:
+        started = time.perf_counter()
+
+        pipeline_output = run_pipeline(
+            query=query,
+            max_results=max_results,
+            progress_callback=progress,
+        )
+
+        job["result"] = build_analysis_response(
+            query,
+            pipeline_output,
+            time.perf_counter() - started,
+        )
+        job["stage"] = "done"
+        job["percent"] = 100
+        job["message"] = "Analysis complete"
+        job["status"] = "done"
+
+    except Exception as error:
+
+        print()
+        print("=" * 70)
+        print("API ANALYSIS FAILED")
+        print("=" * 70)
+        traceback.print_exc()
+
+        job["status"] = "error"
+        job["message"] = str(error) or "Analysis failed."
+
+    finally:
+        job["finished_at"] = time.time()
+
+        with JOBS_LOCK:
+            if ACTIVE_JOB["id"] == job_id:
+                ACTIVE_JOB["id"] = None
+
+
+@app.post("/api/jobs")
+def start_job(
+    request: AnalysisRequest
+):
+
+    query = request.query.strip()
+
+    if not query:
+        raise HTTPException(
+            status_code=400,
+            detail="Research query cannot be empty."
+        )
+
+    with JOBS_LOCK:
+
+        active_id = ACTIVE_JOB["id"]
+
+        if active_id is not None:
+            active = JOBS[active_id]
+
+            # Same query again (double click / page reload): reuse it.
+            if active["query"].casefold() == query.casefold():
+                return {"job_id": active_id, "status": active["status"]}
+
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Another analysis is still running. "
+                    "Please wait for it to finish."
+                ),
+            )
+
+        job_id = uuid.uuid4().hex
+
+        JOBS[job_id] = {
+            "job_id": job_id,
+            "query": query,
+            "status": "running",
+            "stage": "starting",
+            "percent": 1,
+            "message": "Starting analysis",
+            "started_at": time.time(),
+            "finished_at": None,
+            "result": None,
+        }
+
+        ACTIVE_JOB["id"] = job_id
+
+    print()
+    print("=" * 70)
+    print("RESEARCHCLAIMAI ANALYSIS JOB STARTED")
+    print("=" * 70)
+    print(f"Job: {job_id}")
+    print(f"Query: {query}")
+    print(f"Max results: {request.max_results}")
+    print("=" * 70)
+
+    threading.Thread(
+        target=_run_job,
+        args=(job_id, query, request.max_results),
+        daemon=True,
+    ).start()
+
+    return {"job_id": job_id, "status": "running"}
+
+
+@app.get("/api/jobs/{job_id}")
+def get_job(job_id: str):
+
+    job = JOBS.get(job_id)
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Unknown analysis job."
+        )
+
+    end = job["finished_at"] or time.time()
+
+    payload = {
+        "job_id": job["job_id"],
+        "query": job["query"],
+        "status": job["status"],
+        "stage": job["stage"],
+        "percent": job["percent"],
+        "message": job["message"],
+        "elapsed_seconds": round(end - job["started_at"], 1),
+    }
+
+    if job["status"] == "done":
+        payload["result"] = job["result"]
+
+    return payload
 
 
 # ============================================================

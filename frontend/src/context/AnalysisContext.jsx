@@ -83,6 +83,7 @@ export function AnalysisProvider({ children }) {
         // =====================================================
 
         status: "Not Analyzed",
+        analysisSeconds: 0,
 
 
         // =====================================================
@@ -135,6 +136,7 @@ export function AnalysisProvider({ children }) {
             rawResponse: null,
 
             status: "Analyzing",
+            analysisSeconds: 0,
 
             isAnalyzing: true
 
