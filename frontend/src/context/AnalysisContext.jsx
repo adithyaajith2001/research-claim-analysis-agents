@@ -84,6 +84,8 @@ export function AnalysisProvider({ children }) {
 
         status: "Not Analyzed",
         analysisSeconds: 0,
+        queryModels: [],
+        claimsSkippedOtherModels: 0,
 
 
         // =====================================================
@@ -137,6 +139,8 @@ export function AnalysisProvider({ children }) {
 
             status: "Analyzing",
             analysisSeconds: 0,
+            queryModels: [],
+            claimsSkippedOtherModels: 0,
 
             isAnalyzing: true
 

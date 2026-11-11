@@ -21,6 +21,7 @@ import unicodedata
 from typing import List, Dict, Optional, Union, Tuple
 
 from arxiv_retriever import ArxivRetriever
+from query_model import extract_query_models
 from semantic_scholar_retriever import (
     SemanticScholarRetriever
 )
@@ -973,6 +974,43 @@ class UnifiedPaperRetriever:
             )
 
         # ----------------------------------------------------
+        # Model named in the question
+        # ----------------------------------------------------
+
+        query_models = extract_query_models(query)
+
+        if query_models:
+            title_key = re.sub(r"[^a-z0-9]", "", title.lower())
+            abstract_key = re.sub(r"[^a-z0-9]", "", abstract.lower())
+            wanted_keys = [
+                re.sub(r"[^a-z0-9]", "", m.lower()) for m in query_models
+            ]
+
+            if any(k and k in title_key for k in wanted_keys):
+                score += 8.0
+                reasons.append("asked-for model named in title")
+            elif any(k and k in abstract_key for k in wanted_keys):
+                score += 4.0
+                reasons.append("asked-for model named in abstract")
+            else:
+                score -= 3.0
+                reasons.append("asked-for model not mentioned")
+
+        # ----------------------------------------------------
+        # Source quality: CrossRef often returns thin or low-quality
+        # records, so prefer arXiv and Semantic Scholar when tied.
+        # ----------------------------------------------------
+
+        source_name = str(cls._get_source(paper) or "").lower()
+
+        if "crossref" in source_name:
+            score -= 2.0
+            reasons.append("CrossRef record lightly penalized")
+        elif "arxiv" in source_name or "semantic" in source_name:
+            score += 1.0
+            reasons.append("arXiv/Semantic Scholar record")
+
+        # ----------------------------------------------------
         # Missing metadata
         # ----------------------------------------------------
 
@@ -1076,6 +1114,12 @@ class UnifiedPaperRetriever:
             )
             if benchmark_query.lower() != query.lower():
                 retrieval_queries.append(benchmark_query)
+
+        # When the question names a model (for example "Mistral 7B"), also
+        # search for that model on its own so its own paper is found.
+        for model_name in extract_query_models(query):
+            if model_name.lower() not in [q.lower() for q in retrieval_queries]:
+                retrieval_queries.append(model_name)
 
         print(
             "Retrieval queries: "

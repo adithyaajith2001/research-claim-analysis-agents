@@ -173,6 +173,8 @@ const Loading = () => {
           neutralPapers: result.neutralPapers,
           contradictions: result.contradictions,
           analysisSeconds: result.analysis_seconds,
+          queryModels: result.query_models,
+          claimsSkippedOtherModels: result.claims_skipped_other_models,
           rawResponse: result.rawResponse
         });
 

@@ -47,7 +47,7 @@ function levelInfo(level) {
       tone: "high",
       label: "High confidence",
       headline: "Strong supporting evidence",
-      text: "The claims found are well supported and consistent with the evidence."
+      text: "The claims found match their source papers and the evidence behind them is strong."
     };
   }
 
@@ -56,7 +56,7 @@ function levelInfo(level) {
       tone: "medium",
       label: "Medium confidence",
       headline: "Moderate evidence: check the details",
-      text: "The claims are supported, but the evidence has gaps. Review the weaker claims below before relying on them."
+      text: "The claims match what their papers say, but the evidence has gaps and was not confirmed by other papers. Review each claim before relying on it."
     };
   }
 
@@ -97,21 +97,21 @@ function claimVerdict(claim) {
   const verification = claim?.verification || {};
 
   if ((verification.supporting_evidence || []).length > 0) {
-    return { tone: "high", label: "Supported" };
+    return { tone: "high", label: "Found in paper" };
   }
 
   if ((verification.weak_evidence || []).length > 0) {
-    return { tone: "medium", label: "Weak support" };
+    return { tone: "medium", label: "Weak match" };
   }
 
   const score = Number(claim?.verification_score);
 
   if (Number.isFinite(score)) {
-    if (score >= 7.5) return { tone: "high", label: "Supported" };
-    if (score >= 4.5) return { tone: "medium", label: "Weak support" };
+    if (score >= 7.5) return { tone: "high", label: "Found in paper" };
+    if (score >= 4.5) return { tone: "medium", label: "Weak match" };
   }
 
-  return { tone: "low", label: "Not supported" };
+  return { tone: "low", label: "Not found in paper" };
 }
 
 function claimSourceText(claim) {
@@ -206,10 +206,28 @@ function Dashboard() {
     ? analysisData.contradictions
     : [];
 
+  const queryModels = Array.isArray(analysisData?.queryModels)
+    ? analysisData.queryModels
+    : [];
+  const skippedOther = Number(analysisData?.claimsSkippedOtherModels) || 0;
+  const modelLabel = queryModels.join(", ");
+
   const score = Number(analysisData?.confidence) || 0;
   const level = analysisData?.confidenceLevel || "Low";
   const breakdown = analysisData?.confidenceBreakdown || {};
-  const info = levelInfo(level);
+  const info =
+    claims.length === 0
+      ? {
+          tone: "low",
+          label: "No matching claims",
+          headline: modelLabel
+            ? `No results found for ${modelLabel}`
+            : "No claims could be extracted",
+          text: modelLabel
+            ? `The papers found did not report a ${modelLabel} result we could verify, so no score can be trusted. Try a more specific question or a different model name.`
+            : "No numeric benchmark claims were found in these papers, so no score can be trusted."
+        }
+      : levelInfo(level);
 
   const sortedClaims = useMemo(
     () =>
@@ -333,18 +351,20 @@ function Dashboard() {
 
               <ul className="rc-summary-facts">
                 <li>
-                  <strong>{verdictCounts.high}</strong> claims supported
+                  <strong>{verdictCounts.high}</strong> found in the paper's text
                 </li>
                 <li>
-                  <strong>{verdictCounts.medium}</strong> weakly supported
+                  <strong>{verdictCounts.medium}</strong> weak match
                 </li>
                 <li>
-                  <strong>{verdictCounts.low}</strong> not supported
+                  <strong>{verdictCounts.low}</strong> not found
                 </li>
               </ul>
             </div>
 
-            <ConfidenceRing score={score} tone={info.tone} />
+            {claims.length > 0 && (
+              <ConfidenceRing score={score} tone={info.tone} />
+            )}
           </section>
 
 
@@ -370,6 +390,7 @@ function Dashboard() {
 
 
           {/* ---------- SCORE BREAKDOWN ---------- */}
+          {claims.length > 0 && (
           <section className="rc-card">
             <h2 className="rc-section-title">How the score was built</h2>
             <p className="rc-section-note">
@@ -412,20 +433,30 @@ function Dashboard() {
               })}
             </div>
           </section>
+          )}
 
 
           {/* ---------- CLAIMS ---------- */}
           <section className="rc-card">
             <h2 className="rc-section-title">Claims found</h2>
             <p className="rc-section-note">
-              Each result a paper reports, checked against the evidence.
-              Select a row to see the reasoning and source text.
+              Each result a paper reports, checked against the paper's own
+              text. Select a row to see the reasoning and source text.
             </p>
+            {modelLabel && skippedOther > 0 && (
+              <p className="rc-section-note">
+                Showing only claims about {modelLabel}.{" "}
+                {skippedOther} claim{skippedOther === 1 ? "" : "s"} about other
+                models {skippedOther === 1 ? "was" : "were"} left out.
+              </p>
+            )}
 
             {claims.length === 0 ? (
               <div className="rc-notice">
-                No numeric benchmark claims could be extracted from these
-                papers. Try a more specific question, for example
+                {modelLabel
+                  ? `No claims about ${modelLabel} were found in the retrieved papers.`
+                  : "No numeric benchmark claims could be extracted from these papers."}
+                {" "}Try a more specific question, for example
                 “MMLU accuracy of GPT-4”.
               </div>
             ) : (

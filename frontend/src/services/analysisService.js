@@ -42,6 +42,8 @@ function shapeResult(data, trimmedQuery) {
     },
     summary: data.summary || "Analysis completed.",
     analysis_seconds: Number(data.analysis_seconds) || 0,
+    query_models: Array.isArray(data.query_models) ? data.query_models : [],
+    claims_skipped_other_models: Number(data.claims_skipped_other_models) || 0,
     rawResponse: data,
   };
 }

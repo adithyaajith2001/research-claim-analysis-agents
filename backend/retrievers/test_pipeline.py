@@ -30,6 +30,7 @@ through FastAPI and then consumed by the React frontend.
 """
 
 import os
+import re
 import sys
 import time
 
@@ -134,6 +135,7 @@ from contradiction_agent import (
 # ============================================================
 
 from confidence_scoring import calculate_confidence
+from query_model import extract_query_models, claim_matches_any
 
 
 # ============================================================
@@ -941,11 +943,37 @@ def run_pipeline(
         # network-bound, so papers are read at the same time instead of
         # one after another. Nothing here touches the database.
 
+        query_models = extract_query_models(query)
+        skipped_other_models = 0
+
         prefetched_claims = {}
-        papers_with_text = [
-            paper for paper in papers
-            if (paper.get("full_text") or paper.get("abstract") or "").strip()
-        ]
+        def _mentions_query_model(paper):
+            if not query_models:
+                return True
+            blob = re.sub(
+                r"[^a-z0-9]", "",
+                " ".join([
+                    str(paper.get("title") or ""),
+                    str(paper.get("abstract") or ""),
+                    str(paper.get("full_text") or ""),
+                ]).lower()
+            )
+            return any(
+                re.sub(r"[^a-z0-9]", "", m.lower()) in blob
+                for m in query_models
+            )
+
+        papers_with_text = []
+        for paper in papers:
+            if not (paper.get("full_text") or paper.get("abstract") or "").strip():
+                continue
+            if not _mentions_query_model(paper):
+                # Never mentions the model asked about: skip the slow
+                # Gemini extraction for this paper.
+                print(f"[skip] {paper['title']} does not mention {query_models}")
+                prefetched_claims[paper["id"]] = []
+                continue
+            papers_with_text.append(paper)
 
         if papers_with_text:
             from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1059,6 +1087,23 @@ def run_pipeline(
             print(
                 f"Claims extracted: {len(claims)}"
             )
+
+            # Keep only claims about the model the question asks about.
+            # This also saves time: unrelated claims are never scored.
+            if query_models:
+                kept_claims = [
+                    item for item in claims
+                    if claim_matches_any(
+                        query_models,
+                        item.get("model_name"),
+                        item.get("claim", ""),
+                    )
+                ]
+                skipped_other_models += len(claims) - len(kept_claims)
+                claims = kept_claims
+                print(
+                    f"Claims about {', '.join(query_models)}: {len(claims)}"
+                )
 
             # =================================================
             # PROCESS EACH CLAIM
@@ -1512,6 +1557,10 @@ def run_pipeline(
             "papers": papers,
 
             "claims_extracted": len(all_claim_results),
+
+            "query_models": query_models,
+
+            "claims_skipped_other_models": skipped_other_models,
 
             "claims": all_claim_results,
 
