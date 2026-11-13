@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../../firebase";
+import { loginUser, setSession } from "../../services/authService";
 
 import {
   FaBrain,
@@ -26,60 +27,22 @@ const LoginForm = () => {
   // NORMAL EMAIL/PASSWORD LOGIN
   // ==========================================
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     setError("");
 
-    // Check empty fields
     if (!email.trim() || !password.trim()) {
       setError("Please enter your email and password.");
       return;
     }
 
-    // Get registered user
-    const storedUser = JSON.parse(
-      localStorage.getItem("researchClaimUser")
-    );
-
-    // No registered account
-    if (!storedUser) {
-      setError("No account found. Please sign up first.");
-      return;
+    try {
+      await loginUser(email, password);
+      navigate("/home");
+    } catch (err) {
+      setError(err.message || "Login failed. Please try again.");
     }
-
-    // Check email
-    const emailMatches =
-      storedUser.email.toLowerCase() ===
-      email.trim().toLowerCase();
-
-    // Check password
-    const passwordMatches =
-      storedUser.password === password;
-
-    // Invalid credentials
-    if (!emailMatches || !passwordMatches) {
-      setError("Invalid email or password. Please try again.");
-      return;
-    }
-
-    // Successful login
-    console.log("Login successful:", {
-      email: storedUser.email,
-      rememberMe,
-    });
-
-    // Store logged-in user
-    localStorage.setItem(
-      "loggedInUser",
-      JSON.stringify({
-        name: storedUser.name,
-        email: storedUser.email,
-      })
-    );
-
-    // Navigate
-    navigate("/home");
   };
 
   // ==========================================
@@ -101,16 +64,13 @@ const LoginForm = () => {
 
       console.log("Google login successful:", user);
 
-      // Store Google user
-      localStorage.setItem(
-        "loggedInUser",
-        JSON.stringify({
-          name: user.displayName,
-          email: user.email,
-          photoURL: user.photoURL,
-          provider: "google",
-        })
-      );
+      // Store Google user as the current session
+      setSession({
+        name: user.displayName || user.email,
+        email: user.email,
+        photoURL: user.photoURL,
+        provider: "google",
+      });
 
       // Navigate only after successful login
       navigate("/home");

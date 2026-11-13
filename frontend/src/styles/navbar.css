@@ -161,3 +161,29 @@ display:none;
 }
 
 }
+/* ---------------- account and notification menus ---------------- */
+
+.nav-menu-wrap{position:relative}
+.nav-bell{all:unset;position:relative;display:flex;cursor:pointer;padding:6px;border-radius:10px}
+.nav-bell:focus-visible,.user-box:focus-visible{outline:2px solid #4DA6FF;outline-offset:2px}
+.nav-badge{position:absolute;top:-2px;right:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#ef4444;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+button.user-box{border:0;cursor:pointer;font:inherit;font-size:15px}
+.nav-avatar{width:28px;height:28px;border-radius:50%;object-fit:cover}
+.nav-avatar-initial{display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#4DA6FF,#8b7bff);color:#071029;font-weight:700;font-size:14px}
+.nav-username{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-dropdown{position:absolute;right:0;top:calc(100% + 12px);width:300px;background:#10172e;border:1px solid #243055;border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.45);padding:8px;z-index:1000;color:#eef2ff}
+.nav-dropdown-head{padding:8px 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#aab4d4;font-weight:600}
+.nav-empty{margin:0;padding:12px 10px;color:#aab4d4;font-size:14px}
+.nav-note{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:2px;width:100%;padding:10px;border-radius:10px;cursor:pointer;font-size:14px}
+.nav-note:hover{background:#162040}
+.nav-note strong{font-size:13px;color:#eef2ff}
+.nav-note span{color:#c7d8f5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nav-note small{color:#8793b8;font-size:12px}
+.nav-note-unread{background:rgba(77,166,255,.1)}
+.nav-dropdown-link{all:unset;box-sizing:border-box;display:block;width:100%;padding:10px;border-radius:10px;cursor:pointer;font-size:14px;color:#c7d8f5}
+.nav-dropdown-link:hover{background:#162040;color:#fff}
+.nav-logout{color:#f87171}
+.nav-account-head{display:flex;flex-direction:column;padding:10px;border-bottom:1px solid #243055;margin-bottom:6px}
+.nav-account-head strong{font-size:15px}
+.nav-account-head span{font-size:13px;color:#aab4d4;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:900px){.nav-username{display:none}}

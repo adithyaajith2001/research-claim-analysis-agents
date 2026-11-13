@@ -27,6 +27,9 @@ import {
   analyzeTopic
 } from "../../services/analysisService";
 
+import { getSession } from "../../services/authService";
+import { addHistoryEntry } from "../../services/historyService";
+
 import "../../styles/loading.css";
 
 
@@ -153,7 +156,7 @@ const Loading = () => {
 
         const confidenceScore = Number(result.confidence?.overall_score);
 
-        updateAnalysisData({
+        const finished = {
           topic: result.query || topic,
           confidence: Number.isFinite(confidenceScore)
             ? confidenceScore
@@ -176,7 +179,15 @@ const Loading = () => {
           queryModels: result.query_models,
           claimsSkippedOtherModels: result.claims_skipped_other_models,
           rawResponse: result.rawResponse
-        });
+        };
+
+        updateAnalysisData(finished);
+
+        // Save to this account's search history
+        const session = getSession();
+        if (session) {
+          addHistoryEntry(session.email, finished);
+        }
 
         navigate("/dashboard", { replace: true });
       } catch (error) {

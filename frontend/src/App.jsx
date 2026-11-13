@@ -8,6 +8,8 @@ import Dashboard from "./pages/Dashboard";
 import SignUp from "./pages/SignUp";
 import Analysis from "./pages/Analysis";
 import About from "./pages/About";
+import Account from "./pages/Account";
+import ProtectedRoute from "./components/layout/ProtectedRoute";
 
 
 function App() {
@@ -34,7 +36,7 @@ function App() {
 
         <Route
           path="/home"
-          element={<Home />}
+          element={<ProtectedRoute><Home /></ProtectedRoute>}
         />
 
 
@@ -54,7 +56,7 @@ function App() {
 
         <Route
           path="/analysis"
-          element={<Analysis />}
+          element={<ProtectedRoute><Analysis /></ProtectedRoute>}
         />
 
 
@@ -64,7 +66,7 @@ function App() {
 
         <Route
           path="/loading"
-          element={<Loading />}
+          element={<ProtectedRoute><Loading /></ProtectedRoute>}
         />
 
 
@@ -74,7 +76,13 @@ function App() {
 
         <Route
           path="/dashboard"
-          element={<Dashboard />}
+          element={<ProtectedRoute><Dashboard /></ProtectedRoute>}
+        />
+
+
+        <Route
+          path="/account"
+          element={<ProtectedRoute><Account /></ProtectedRoute>}
         />
 
 

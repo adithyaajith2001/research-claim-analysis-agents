@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { registerUser } from "../services/authService";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -17,28 +18,35 @@ function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const handleSignUp = (e) => {
-    e.preventDefault();
+  const [error, setError] = useState("");
 
-    // Check whether passwords match
-    if (password !== confirmPassword) {
-      alert("Passwords do not match.");
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!name.trim() || !email.trim() || !password) {
+      setError("Please fill in all the fields.");
       return;
     }
-// Save user information in localStorage
-const userData = {
-  name,
-  email,
-  password,
-};
 
-localStorage.setItem(
-  "researchClaimUser",
-  JSON.stringify(userData)
-);
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
 
-setSuccess(true);
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
 
+    try {
+      await registerUser({ name, email, password });
+    } catch (err) {
+      setError(err.message || "Could not create the account.");
+      return;
+    }
+
+    setSuccess(true);
 
     // Redirect to Login page after 1.8 seconds
     setTimeout(() => {
@@ -81,6 +89,10 @@ setSuccess(true);
         {/* SIGNUP FORM */}
         {!success && (
           <form onSubmit={handleSignUp}>
+
+            <div className={`login-error ${error ? "show" : ""}`} role="alert">
+              {error}
+            </div>
 
             {/* Full Name */}
             <div className="input-group">
