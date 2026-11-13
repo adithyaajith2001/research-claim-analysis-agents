@@ -809,7 +809,8 @@ def chunk_text(
 # ============================================================
 
 def _chunk_contains_benchmark(
-    chunk
+    chunk,
+    focus_benchmarks=None
 ):
     """
     Determine whether a chunk contains an exact validated benchmark.
@@ -836,7 +837,21 @@ def _chunk_contains_benchmark(
         return False
 
 
-    for benchmark in VALIDATED_BENCHMARKS:
+    # When the user asked about specific benchmarks, only those count as
+    # anchors. This sends far fewer chunks to Gemini.
+    benchmarks_to_check = VALIDATED_BENCHMARKS
+
+    if focus_benchmarks:
+        focused = [
+            _canonical_benchmark(name)
+            for name in focus_benchmarks
+        ]
+        focused = [name for name in focused if name]
+
+        if focused:
+            benchmarks_to_check = focused
+
+    for benchmark in benchmarks_to_check:
 
         if _contains_exact_benchmark(
             chunk,
@@ -850,7 +865,8 @@ def _chunk_contains_benchmark(
 
 
 def _find_relevant_chunk_indices(
-    chunks
+    chunks,
+    focus_benchmarks=None
 ):
     """
     Find exact benchmark anchor chunks and expand each anchor
@@ -876,7 +892,8 @@ def _find_relevant_chunk_indices(
     ):
 
         if _chunk_contains_benchmark(
-            chunk
+            chunk,
+            focus_benchmarks
         ):
 
             anchor_indices.add(
@@ -4953,7 +4970,8 @@ def _clean_json_response(
 def extract_claims_from_text(
     paper_id: str,
     text: str,
-    client=None
+    client=None,
+    focus_benchmarks=None
 ) -> list:
     """
     Extract quantitative claims from ONE paper using Gemini.
@@ -5027,7 +5045,8 @@ def extract_claims_from_text(
 
     relevant_indices = (
         _find_relevant_chunk_indices(
-            chunks
+            chunks,
+            focus_benchmarks
         )
     )
 

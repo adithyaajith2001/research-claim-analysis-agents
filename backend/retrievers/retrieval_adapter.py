@@ -43,6 +43,7 @@ This allows the claim extraction agent to see actual paper text
 instead of only the abstract whenever PDF extraction succeeds.
 """
 
+import os
 import re
 import html
 import urllib.parse
@@ -116,6 +117,11 @@ except ImportError:
 # ============================================================
 # CONVERT RAW OBJECT TO DICT
 # ============================================================
+
+# Long reports (100+ pages) take minutes to download and read. Result tables
+# are almost always in the first pages, so only the first pages are read.
+PDF_MAX_PAGES = int(os.getenv("PDF_MAX_PAGES", "30"))
+
 
 def _as_dict(
     raw: Union["StandardPaper", Dict]
@@ -1307,7 +1313,7 @@ def _download_and_extract_pdf(
 
         extracted = processor.extract_text(
             pdf_bytes,
-            max_pages=None
+            max_pages=PDF_MAX_PAGES
         )
 
         if extracted:
@@ -1513,7 +1519,7 @@ def enrich_paper_with_pdf_text(
 
         processor = PDFProcessor(
             verify_ssl=False,
-            max_pages=None
+            max_pages=PDF_MAX_PAGES
         )
 
     # --------------------------------------------------------
@@ -1599,7 +1605,7 @@ def enrich_paper_with_pdf_text(
 
             processed = processor.process_paper(
                 raw,
-                max_pages=None
+                max_pages=PDF_MAX_PAGES
             )
 
             processed_text = _get_existing_text(
@@ -1962,7 +1968,8 @@ def normalize_paper(
 # ============================================================
 
 def normalize_and_dedupe(
-    raw_papers: List[Any]
+    raw_papers: List[Any],
+    pdf_required_terms: Optional[List[str]] = None
 ) -> List[Dict]:
     """
     Enrich, normalize and deduplicate all retrieved papers.
@@ -1992,7 +1999,7 @@ def normalize_and_dedupe(
 
         processor = PDFProcessor(
             verify_ssl=False,
-            max_pages=None
+            max_pages=PDF_MAX_PAGES
         )
 
 
@@ -2015,6 +2022,23 @@ def normalize_and_dedupe(
     from concurrent.futures import ThreadPoolExecutor
 
     def _enrich_one(raw_paper):
+        # Skip the slow PDF download for papers that never mention the
+        # model family the user asked about (e.g. a physics paper that
+        # only shares the word "Mistral").
+        if pdf_required_terms:
+            meta = _as_dict(raw_paper) or {}
+            blob = (
+                str(meta.get("title") or "")
+                + " "
+                + str(meta.get("abstract") or "")
+            ).lower()
+            if not any(term in blob for term in pdf_required_terms):
+                print(
+                    "[skip PDF] does not mention the asked-for model: "
+                    f"{str(meta.get('title') or '')[:70]}"
+                )
+                return raw_paper
+
         try:
             return enrich_paper_with_pdf_text(
                 raw_paper,
@@ -2264,8 +2288,17 @@ def get_pipeline_ready_papers(
     # Enrich + normalize + deduplicate
     # --------------------------------------------------------
 
+    from query_model import extract_query_models
+
+    families = []
+    for model_name in extract_query_models(query):
+        match = re.match(r"[A-Za-z]+", model_name.strip())
+        if match:
+            families.append(match.group(0).lower())
+
     return normalize_and_dedupe(
-        raw_papers
+        raw_papers,
+        pdf_required_terms=families or None
     )
 
 

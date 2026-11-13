@@ -946,6 +946,7 @@ def run_pipeline(
         query_models = extract_query_models(query)
         from unified_retriever import UnifiedPaperRetriever
         _find_benchmarks = UnifiedPaperRetriever._find_query_benchmark_targets
+        query_benchmark_names = list(_find_benchmarks(query))
         query_benchmarks = {
             re.sub(r"[^a-z0-9]", "", name.lower())
             for name in _find_benchmarks(query)
@@ -990,7 +991,8 @@ def run_pipeline(
                 claims_found = extract_claims_from_text(
                     paper_id=paper["id"],
                     text=text,
-                    client=client
+                    client=client,
+                    focus_benchmarks=query_benchmark_names
                 )
                 print(
                     f"[timing] Claim extraction for paper "
