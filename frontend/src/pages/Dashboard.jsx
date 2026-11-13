@@ -15,7 +15,9 @@ import {
   claimSourceText,
   formatValue,
   sourceCount,
-  SINGLE_SOURCE_NOTE
+  SINGLE_SOURCE_NOTE,
+  isSubsetClaim,
+  SUBSET_NOTE
 } from "../utils/reportHelpers";
 import { downloadReportPdf } from "../utils/reportPdf";
 
@@ -329,6 +331,9 @@ function Dashboard() {
               Each result a paper reports, checked against the paper's own
               text. Select a row to see the reasoning and source text.
             </p>
+            {claims.some(isSubsetClaim) && (
+              <p className="rc-notice rc-subset-note">{SUBSET_NOTE}</p>
+            )}
             {skippedOther > 0 && (
               <p className="rc-section-note">
                 Showing only results{modelLabel ? ` for ${modelLabel}` : ""} that match your question.{" "}
@@ -380,6 +385,9 @@ function Dashboard() {
                                 <span className="rc-claim-tags">
                                   {claim.model_name && (
                                     <span className="rc-tag">{claim.model_name}</span>
+                                  )}
+                                  {isSubsetClaim(claim) && (
+                                    <span className="rc-tag rc-tag-warn">Part of benchmark</span>
                                   )}
                                   {claim.benchmark && (
                                     <span className="rc-tag">{claim.benchmark}</span>

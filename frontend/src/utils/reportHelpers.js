@@ -131,3 +131,14 @@ export function sourceCount(claims) {
 
 export const SINGLE_SOURCE_NOTE =
   "Single source: these results come from one paper and were not confirmed by another paper, so treat the score as provisional.";
+
+// True when a claim is about one part of a benchmark (for example the
+// "Clinical Knowledge" sub-component of MMLU) rather than the whole score.
+export function isSubsetClaim(claim) {
+  return /sub-?components?|sub-?sets?|sub-?tasks?|sub-?categor|sub-?jects?/i.test(
+    String(claim?.claim || "")
+  );
+}
+
+export const SUBSET_NOTE =
+  "Some results below are for one part of a benchmark (for example the Clinical Knowledge section of MMLU), not the full benchmark score. They should not be read as the overall number.";

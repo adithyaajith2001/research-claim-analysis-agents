@@ -9,7 +9,9 @@ import {
   claimVerdict,
   formatValue,
   sourceCount,
-  SINGLE_SOURCE_NOTE
+  SINGLE_SOURCE_NOTE,
+  isSubsetClaim,
+  SUBSET_NOTE
 } from "./reportHelpers";
 
 const BLUE = [12, 83, 148];
@@ -152,6 +154,10 @@ export function downloadReportPdf(analysisData) {
   if (noClaims) {
     paragraph("No claims to list.", 10, MUTED);
   } else {
+    if (claims.some(isSubsetClaim)) {
+      paragraph(SUBSET_NOTE, 10, MUTED);
+    }
+
     autoTable(doc, {
       startY: y,
       margin: { left: margin, right: margin },

@@ -110,3 +110,6 @@
 }
 
 .rc-single-source{margin:12px 0 0!important;padding:10px 14px;border-radius:10px;background:var(--medium-bg);border:1px solid rgba(251,191,36,.3);color:var(--text)!important;font-size:14px;max-width:520px}
+
+.rc-subset-note{margin:0 0 16px!important;font-size:14px}
+.rc-tag-warn{color:var(--medium);border-color:rgba(251,191,36,.4);background:var(--medium-bg)}
