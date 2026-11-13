@@ -142,6 +142,21 @@ _GENERIC_SUBJECTS = {
 }
 
 
+def _display_model(model_key) -> str:
+    """Readable model name for log lines."""
+    return str(model_key) if model_key else "UNKNOWN_MODEL"
+
+
+def _display_setting(evaluation_setting) -> str:
+    """Readable evaluation setting for log lines."""
+    return str(evaluation_setting) if evaluation_setting else "UNKNOWN_SETTING"
+
+
+def _display_metric(metric) -> str:
+    """Readable metric for log lines."""
+    return str(metric) if metric else "UNKNOWN_METRIC"
+
+
 def _normalize_model_name(model_name: str) -> str:
     """Normalize model naming differences for comparison only."""
     if not model_name:
