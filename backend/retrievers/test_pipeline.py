@@ -903,6 +903,20 @@ def run_pipeline(
 
     session = get_pipeline_session()
 
+    # On Windows the database file often cannot be deleted while the server
+    # still holds it open. If old rows survived, contradiction detection
+    # would mix in claims from earlier questions, so empty every table too.
+    if RESET_DATABASE_ON_RUN:
+        from db_schema import Base as _Base
+
+        try:
+            for table in reversed(_Base.metadata.sorted_tables):
+                session.execute(table.delete())
+            session.commit()
+        except Exception as error:
+            session.rollback()
+            print(f"[warning] Could not clear old rows: {error}")
+
     all_claim_results = []
 
     all_verification_scores = []
