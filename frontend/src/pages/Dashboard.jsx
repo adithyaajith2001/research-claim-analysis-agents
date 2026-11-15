@@ -105,6 +105,10 @@ function Dashboard() {
   const skippedOther = Number(analysisData?.claimsSkippedOtherModels) || 0;
   const modelLabel = queryModels.join(", ");
 
+  const skippedClaims = Array.isArray(analysisData?.skippedClaims)
+    ? analysisData.skippedClaims
+    : [];
+
   const score = Number(analysisData?.confidence) || 0;
   const level = analysisData?.confidenceLevel || "Low";
   const breakdown = analysisData?.confidenceBreakdown || {};
@@ -442,6 +446,35 @@ function Dashboard() {
               </div>
             )}
           </section>
+
+
+          {/* ---------- LEFT OUT ---------- */}
+          {skippedClaims.length > 0 && (
+            <section className="rc-card">
+              <details className="rc-details">
+                <summary>
+                  Results left out ({skippedClaims.length})
+                </summary>
+                <p className="rc-section-note">
+                  These were found in the papers but are about other models
+                  or other benchmarks than your question, so they are not
+                  scored.
+                </p>
+                <ul className="rc-skipped">
+                  {skippedClaims.map((item, index) => (
+                    <li key={index}>
+                      <strong>{item.model_name || "Unknown model"}</strong>
+                      {" · "}
+                      {item.benchmark || "Unknown benchmark"}
+                      {" · "}
+                      {item.reported_value}
+                      <small>{item.paper_title}</small>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            </section>
+          )}
 
 
           {/* ---------- COMPARISONS ---------- */}

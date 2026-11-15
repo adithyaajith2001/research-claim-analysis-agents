@@ -178,6 +178,7 @@ const Loading = () => {
           analysisSeconds: result.analysis_seconds,
           queryModels: result.query_models,
           claimsSkippedOtherModels: result.claims_skipped_other_models,
+          skippedClaims: result.skipped_claims,
           rawResponse: result.rawResponse
         };
 

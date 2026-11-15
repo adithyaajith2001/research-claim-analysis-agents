@@ -966,6 +966,7 @@ def run_pipeline(
             for name in _find_benchmarks(query)
         }
         skipped_other_models = 0
+        skipped_claims = []
 
         prefetched_claims = {}
         def _mentions_query_model(paper):
@@ -1126,6 +1127,22 @@ def run_pipeline(
                         in query_benchmarks
                     )
                 ]
+                kept_ids = {id(item) for item in kept_claims}
+                for item in claims:
+                    if id(item) not in kept_ids:
+                        skipped_claims.append({
+                            "paper_title": paper.get("title"),
+                            "claim": item.get("claim"),
+                            "model_name": item.get("model_name"),
+                            "benchmark": item.get("benchmark_name"),
+                            "reported_value": item.get("reported_value"),
+                        })
+                        print(
+                            "[left out] "
+                            f"model={item.get('model_name')!r} "
+                            f"benchmark={item.get('benchmark_name')!r} "
+                            f"value={item.get('reported_value')}"
+                        )
                 skipped_other_models += len(claims) - len(kept_claims)
                 claims = kept_claims
                 print(
@@ -1588,6 +1605,8 @@ def run_pipeline(
             "query_models": query_models,
 
             "claims_skipped_other_models": skipped_other_models,
+
+            "skipped_claims": skipped_claims[:30],
 
             "claims": all_claim_results,
 

@@ -113,3 +113,10 @@
 
 .rc-subset-note{margin:0 0 16px!important;font-size:14px}
 .rc-tag-warn{color:var(--medium);border-color:rgba(251,191,36,.4);background:var(--medium-bg)}
+
+.rc-details summary{cursor:pointer;font-size:18px;font-weight:600;color:var(--text);padding:2px 0}
+.rc-details summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.rc-details .rc-section-note{margin:10px 0 12px}
+.rc-skipped{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.rc-skipped li{padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:15px}
+.rc-skipped small{display:block;margin-top:2px;color:var(--muted);font-size:13px}

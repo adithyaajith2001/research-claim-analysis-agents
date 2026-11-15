@@ -527,6 +527,7 @@ def build_analysis_response(query, pipeline_output, elapsed_seconds):
         "analysis_seconds": round(float(elapsed_seconds), 1),
         "query_models": result.get("query_models", []),
         "claims_skipped_other_models": result.get("claims_skipped_other_models", 0),
+        "skipped_claims": result.get("skipped_claims", []),
     }
 
     print()

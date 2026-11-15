@@ -44,6 +44,7 @@ function shapeResult(data, trimmedQuery) {
     analysis_seconds: Number(data.analysis_seconds) || 0,
     query_models: Array.isArray(data.query_models) ? data.query_models : [],
     claims_skipped_other_models: Number(data.claims_skipped_other_models) || 0,
+    skipped_claims: Array.isArray(data.skipped_claims) ? data.skipped_claims : [],
     rawResponse: data,
   };
 }
