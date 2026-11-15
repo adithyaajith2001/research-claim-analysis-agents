@@ -77,10 +77,7 @@ function About() {
 
 
             <p>
-              The current system retrieves papers from arXiv,
-              extracts relevant research claims from their abstracts,
-              and classifies the retrieved evidence into supporting,
-              contradicting, or neutral categories.
+              The system searches arXiv, Semantic Scholar and CrossRef together, reads abstracts and full PDFs including results tables, extracts numeric benchmark claims, verifies each one against the paper's own text, and compares papers that report the same model on the same benchmark.
             </p>
 
           </div>
@@ -162,7 +159,7 @@ function About() {
                 </h3>
 
                 <p>
-                  The system searches arXiv for relevant scientific
+                  The system searches arXiv, Semantic Scholar and CrossRef for relevant scientific
                   research papers related to the submitted claim.
                 </p>
 
@@ -400,10 +397,7 @@ function About() {
 
 
             <p>
-              The current implementation focuses on research-paper
-              retrieval from arXiv, claim extraction from paper
-              abstracts, evidence categorization, and dashboard-based
-              presentation of the results.
+              The current implementation focuses on numeric benchmark claims for machine-learning models (for example MMLU, GSM8K and HumanEval). It retrieves papers from three sources, filters results to the model you asked about, flags single-source results, and presents everything in a dashboard with a downloadable PDF report.
             </p>
 
 

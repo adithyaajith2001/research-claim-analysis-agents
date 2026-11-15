@@ -187,3 +187,14 @@ button.user-box{border:0;cursor:pointer;font:inherit;font-size:15px}
 .nav-account-head strong{font-size:15px}
 .nav-account-head span{font-size:13px;color:#aab4d4;overflow:hidden;text-overflow:ellipsis}
 @media(max-width:900px){.nav-username{display:none}}
+
+/* ---------------- phones: two-row navbar ---------------- */
+@media (max-width: 720px) {
+  .navbar { flex-wrap: wrap; padding: 10px 14px; row-gap: 8px; }
+  .logo { font-size: 20px; gap: 6px; }
+  .nav-right { margin-left: auto; }
+  .nav-links { order: 3; width: 100%; justify-content: space-between; gap: 4px; }
+  .nav-links a { display: block; padding: 8px 12px; font-size: 14px; text-align: center; }
+  .nav-dropdown { position: fixed; left: 12px; right: 12px; width: auto; top: 112px; }
+}
+@media(max-width:900px){.user-box span.nav-avatar-initial{display:flex}}

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Loading from "./components/loading/Loading";
 
@@ -10,6 +10,8 @@ import Analysis from "./pages/Analysis";
 import About from "./pages/About";
 import Account from "./pages/Account";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
+import NotFound from "./pages/NotFound";
+import { getSession } from "./services/authService";
 
 
 function App() {
@@ -26,7 +28,7 @@ function App() {
 
         <Route
           path="/"
-          element={<Login />}
+          element={getSession() ? <Navigate to="/home" replace /> : <Login />}
         />
 
 
@@ -94,6 +96,8 @@ function App() {
           path="/signup"
           element={<SignUp />}
         />
+
+        <Route path="*" element={<NotFound />} />
 
       </Routes>
 

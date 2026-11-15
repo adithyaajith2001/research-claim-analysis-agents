@@ -120,9 +120,9 @@ function Navbar() {
         <li>
 
           <Link
-            to="/"
+            to="/home"
             className={
-              location.pathname === "/"
+              location.pathname === "/home"
                 ? "active"
                 : ""
             }

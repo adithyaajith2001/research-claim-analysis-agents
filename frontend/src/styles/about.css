@@ -550,3 +550,6 @@
   }
 
 }
+/* v15: keep the title inside small screens */
+.about-page { overflow-x: clip; }
+.about-content h1 { font-size: clamp(30px, 9vw, 56px); overflow-wrap: anywhere; }

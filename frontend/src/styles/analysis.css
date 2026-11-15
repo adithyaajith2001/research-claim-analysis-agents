@@ -665,3 +665,26 @@
         min-width: 0;
     }
 }
+
+/* ---------- v15 additions ---------- */
+.analysis-page { position: relative; overflow-x: clip; }
+
+.analysis-sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.analysis-tips { list-style: none; margin-top: 28px; display: grid; gap: 12px; padding: 0; }
+.analysis-tips li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; color: #aab4c5; line-height: 1.6; }
+.analysis-tips svg { color: #4ade80; margin-top: 4px; flex: none; }
+
+.analysis-meta { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 22px; margin: 6px 4px 0; font-size: 12.5px; }
+.analysis-error { color: #fca5a5; }
+.analysis-count { color: #7c8aa5; margin-left: auto; }
+
+.analysis-card textarea:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
+.analysis-examples button:focus-visible, .analyze-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+@media (max-width: 900px) {
+  .analysis-page { grid-template-columns: 1fr; }
+}
