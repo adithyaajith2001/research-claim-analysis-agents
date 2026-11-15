@@ -212,10 +212,23 @@ function Dashboard() {
               <p className="rc-meta">
                 {papers.length} {papers.length === 1 ? "paper" : "papers"} · {claims.length} {claims.length === 1 ? "claim" : "claims"} ·
                 analysed in {formatSeconds(analysisData?.analysisSeconds)}
+                {analysisData?.fromCache && " · saved report"}
               </p>
             </div>
 
             <div className="rc-header-actions">
+              <button
+                type="button"
+                className="rc-button"
+                onClick={() =>
+                  navigate("/loading", {
+                    state: { topic: analysisData?.topic, refresh: true }
+                  })
+                }
+                title="Search the papers again instead of showing the saved report"
+              >
+                Run again
+              </button>
               <button
                 type="button"
                 className="rc-button"

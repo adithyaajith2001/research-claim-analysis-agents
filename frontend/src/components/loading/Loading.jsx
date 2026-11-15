@@ -151,7 +151,8 @@ const Loading = () => {
               percent: update.percent,
               message: update.message
             });
-          }
+          },
+          Boolean(location.state?.refresh)
         );
 
         const confidenceScore = Number(result.confidence?.overall_score);
@@ -177,6 +178,7 @@ const Loading = () => {
           contradictions: result.contradictions,
           analysisSeconds: result.analysis_seconds,
           queryModels: result.query_models,
+          fromCache: result.from_cache,
           claimsSkippedOtherModels: result.claims_skipped_other_models,
           skippedClaims: result.skipped_claims,
           rawResponse: result.rawResponse

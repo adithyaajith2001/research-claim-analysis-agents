@@ -42,6 +42,7 @@ function shapeResult(data, trimmedQuery) {
     },
     summary: data.summary || "Analysis completed.",
     analysis_seconds: Number(data.analysis_seconds) || 0,
+    from_cache: Boolean(data.from_cache),
     query_models: Array.isArray(data.query_models) ? data.query_models : [],
     claims_skipped_other_models: Number(data.claims_skipped_other_models) || 0,
     skipped_claims: Array.isArray(data.skipped_claims) ? data.skipped_claims : [],
@@ -82,7 +83,7 @@ function friendlyError(error) {
  * it every 2 seconds and calls onProgress({stage, percent, message,
  * elapsedSeconds}) so the loading page can show what is really happening.
  */
-export async function analyzeTopic(query, maxResults = 5, onProgress) {
+export async function analyzeTopic(query, maxResults = 5, onProgress, refresh = false) {
   const trimmedQuery = String(query || "").trim();
 
   if (!trimmedQuery) {
@@ -94,7 +95,7 @@ export async function analyzeTopic(query, maxResults = 5, onProgress) {
   try {
     const start = await axios.post(
       `${API_BASE_URL}/api/jobs`,
-      { query: trimmedQuery, max_results: maxResults },
+      { query: trimmedQuery, max_results: maxResults, refresh },
       { headers: { "Content-Type": "application/json" }, timeout: 30000 }
     );
 

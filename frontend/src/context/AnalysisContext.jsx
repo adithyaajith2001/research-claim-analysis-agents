@@ -87,6 +87,7 @@ export function AnalysisProvider({ children }) {
         queryModels: [],
         claimsSkippedOtherModels: 0,
         skippedClaims: [],
+        fromCache: false,
 
 
         // =====================================================
@@ -143,6 +144,7 @@ export function AnalysisProvider({ children }) {
             queryModels: [],
             claimsSkippedOtherModels: 0,
             skippedClaims: [],
+        fromCache: false,
 
             isAnalyzing: true
 
