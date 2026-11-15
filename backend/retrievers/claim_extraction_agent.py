@@ -4180,10 +4180,30 @@ def _validate_model_identity(
         ) or ""
     ).strip()
 
+    # Tables laid out as model groups over sizes ("Gemma 2 | 2B 9B 27B")
+    # never write "Gemma 2 27B" as one phrase. Claims read by
+    # _table_baseline_claims are accepted when both the group label and the
+    # size column really appear in their evidence.
+    table_supported = False
+    if claim.get("_table_baseline"):
+        parts = re.match(
+            r"(?i)^\s*([a-z]+)[\s\-_]*(\d+(?:\.\d+)?)[\s\-_]*(\d+(?:\.\d+)?b)\s*$",
+            model_name,
+        )
+        if parts:
+            squashed = re.sub(r"[\s\-_]+", " ", source_text.lower())
+            table_supported = (
+                f"{parts.group(1)} {parts.group(2)}".lower() in squashed
+                and re.search(
+                    rf"(?<![\w.]){re.escape(parts.group(3).lower())}(?!\w)",
+                    squashed,
+                ) is not None
+            )
+
     # Prefer the exact evidence sentence, but allow the surrounding bounded
     # context to establish the named model when the sentence itself says
     # "the model". The result still has to pass all benchmark/table checks.
-    if not _model_identity_supported_by_source(
+    if not table_supported and not _model_identity_supported_by_source(
         model_name,
         source_text
     ) and not _model_identity_supported_by_source(
@@ -4967,6 +4987,143 @@ def _clean_json_response(
 # REAL GEMINI CLAIM EXTRACTION
 # ============================================================
 
+_NUM = r"\d+(?:\.\d+)?"
+
+
+def _table_baseline_claims(text, focus_models, focus_benchmarks):
+    """
+    Read tables laid out as model groups over sizes, for example:
+
+        Gemma 2 Gemma 3
+        2B 9B 27B 4B 12B 27B
+        MMLU 52.2 71.2 75.2 59.6 74.5 78.6
+
+    Such a table reports another paper's model (here Gemma 2 27B) as a
+    baseline column. Gemini often skips those columns, so they are read
+    directly. Returns raw claims in the same shape Gemini returns, which
+    then go through the normal validation.
+    """
+    if not text or not focus_models or not focus_benchmarks:
+        return []
+
+    benchmark_names = {}
+    for name in VALIDATED_BENCHMARKS:
+        benchmark_names[re.sub(r"[^a-z0-9]", "", str(name).lower())] = name
+
+    wanted = []
+    for raw in focus_benchmarks:
+        key = re.sub(r"[^a-z0-9]", "", str(raw).lower())
+        if key in benchmark_names:
+            wanted.append((key, benchmark_names[key]))
+
+    targets = []
+    for model in focus_models:
+        match = re.match(
+            rf"(?i)^\s*([a-z]+)[\s\-_]*({_NUM})?[\s\-_]*({_NUM}b)\s*$",
+            str(model),
+        )
+        if match and match.group(2):
+            family, version, size = match.group(1), match.group(2), match.group(3)
+            targets.append(
+                (
+                    re.sub(r"[^a-z0-9.]", "", f"{family}{version}".lower()),
+                    size.lower(),
+                    str(model).strip(),
+                )
+            )
+
+    if not wanted or not targets:
+        return []
+
+    lines = str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    size_line = re.compile(rf"^\s*(?:{_NUM}[BM]\s*)+$", re.IGNORECASE)
+    group_label = re.compile(rf"[A-Za-z][A-Za-z\-]*[\s\-]*{_NUM}(?![\w.])")
+
+    claims = []
+    seen = set()
+
+    for index, line in enumerate(lines):
+        for bench_key, bench_name in wanted:
+            row = re.match(
+                rf"^\s*{re.escape(bench_name)}(?![\w\-])([^\d\n]{{0,25}}?)((?:\s+{_NUM}){{3,}})\s*$",
+                line,
+                re.IGNORECASE,
+            )
+            if not row or re.search(r"pro|mobile|video", row.group(1), re.I):
+                continue
+
+            values = re.findall(_NUM, row.group(2))
+
+            # nearest size line above this row
+            size_index = None
+            for back in range(index - 1, max(index - 7, -1), -1):
+                if size_line.match(lines[back]) and len(
+                    re.findall(rf"{_NUM}[BM]", lines[back], re.I)
+                ) == len(values):
+                    size_index = back
+                    break
+            if size_index is None:
+                continue
+
+            sizes = [s.lower() for s in re.findall(rf"{_NUM}[BM]", lines[size_index], re.I)]
+
+            # model-group labels just above the size line
+            group_index = None
+            labels = []
+            for back in range(size_index - 1, max(size_index - 4, -1), -1):
+                found = group_label.findall(lines[back])
+                if len(found) >= 2:
+                    group_index, labels = back, found
+                    break
+            if group_index is None:
+                continue
+
+            # a new group starts when the size stops increasing
+            groups, previous = [], None
+            for position, size in enumerate(sizes):
+                number = float(re.match(_NUM, size).group(0))
+                if previous is None or number <= previous:
+                    groups.append([])
+                groups[-1].append(position)
+                previous = number
+
+            if len(groups) != len(labels):
+                continue
+
+            for label, positions in zip(labels, groups):
+                label_key = re.sub(r"[^a-z0-9.]", "", label.lower())
+                for model_key, size, model_text in targets:
+                    if label_key != model_key:
+                        continue
+                    for position in positions:
+                        if sizes[position] != size:
+                            continue
+                        value = values[position]
+                        dedupe = (bench_key, model_key, size, value)
+                        if dedupe in seen:
+                            continue
+                        seen.add(dedupe)
+                        caption = lines[group_index - 1].strip() if group_index > 0 else ""
+                        claims.append(
+                            {
+                                "claim": f"{model_text} achieves {value} on {bench_name}.",
+                                "source_sentence": "\n".join(
+                                    ([caption] if caption.lower().startswith("table") else [])
+                                    + [lines[group_index].strip(), lines[size_index].strip(), line.strip()]
+                                ),
+                                "section": "Evaluation",
+                                "claim_type": "performance_claim",
+                                "benchmark_name": bench_name,
+                                "reported_value": value,
+                                "value_type": "absolute_accuracy",
+                                "model_name": model_text,
+                                "_table_baseline": True,
+                            }
+                        )
+
+    return claims
+
+
 def _with_model_hint(context_text, focus_models):
     """
     Tell Gemini which model the user asked about. Comparison tables often
@@ -5527,6 +5684,39 @@ def extract_claims_from_text(
         # Rate-limit delay between context groups.
         if SECONDS_BETWEEN_CALLS > 0:
             time.sleep(SECONDS_BETWEEN_CALLS)
+
+    # ========================================================
+    # BASELINE COLUMNS READ DIRECTLY FROM TABLES
+    # ========================================================
+
+    try:
+        for raw_claim in _table_baseline_claims(
+            text, focus_models, focus_benchmarks
+        ):
+            raw_claim = _normalize_gemini_claim_schema(raw_claim)
+            evidence = raw_claim.get("source_sentence", "")
+            raw_claim["_validation_context"] = evidence
+
+            _reconstruct_recovery_evidence(
+                raw_claim, evidence, full_text=text
+            )
+            _normalize_malformed_whitespace_table_evidence(raw_claim)
+
+            if not _validate_claim(raw_claim):
+                continue
+
+            raw_claim.pop("_validation_context", None)
+            raw_claim.pop("_table_baseline", None)
+            raw_claim["paper_id"] = paper_id
+            raw_claim["chunk_index"] = 0
+            raw_claim["context_end_index"] = 0
+            all_claims.append(raw_claim)
+            print(
+                f"[extract] paper {paper_id}: read from table: "
+                f"{raw_claim.get('claim')}"
+            )
+    except Exception as error:
+        print(f"[extract] paper {paper_id}: table baseline pass failed: {error}")
 
     # ========================================================
     # DEDUPLICATE
