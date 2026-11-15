@@ -980,10 +980,19 @@ def run_pipeline(
                     str(paper.get("full_text") or ""),
                 ]).lower()
             )
-            return any(
-                re.sub(r"[^a-z0-9]", "", m.lower()) in blob
-                for m in query_models
-            )
+            def _mentioned(model_name):
+                strict = re.sub(r"[^a-z0-9]", "", model_name.lower())
+                if strict in blob:
+                    return True
+                # A paper may write "Gemma 2 ... 27B" in a table instead of
+                # "Gemma 2 27B", so also accept the family/version and the
+                # size both appearing in the text.
+                tokens = re.findall(r"[a-z]+|\d+(?:\.\d+)?[a-z]?", model_name.lower())
+                size = next((t for t in tokens if re.fullmatch(r"\d+(?:\.\d+)?b", t)), None)
+                head = "".join(t for t in tokens if t != size)
+                return bool(size and head and head in blob and size in blob)
+
+            return any(_mentioned(m) for m in query_models)
 
         papers_with_text = []
         for paper in papers:

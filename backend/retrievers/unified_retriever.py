@@ -1539,7 +1539,28 @@ class UnifiedPaperRetriever:
                 "(placed first)"
             )
 
-        final_scored = selected_pool[:max_results]
+        # The asked model's own paper (fetched by arXiv ID) is always kept and
+        # goes first, even when its abstract ranks low (the Gemma 2 abstract
+        # says "27 billion", not "27B") or the paper limit is already full.
+        pinned_keys = {
+            self._normalized_title(paper) for paper in known_papers
+        }
+        pinned_items = [
+            item for item in scored_papers
+            if self._normalized_title(item[2]) in pinned_keys
+        ]
+
+        if pinned_items:
+            selected_pool = pinned_items + [
+                item for item in selected_pool
+                if self._normalized_title(item[2]) not in pinned_keys
+            ]
+            print(
+                f"Model's own papers pinned first: "
+                f"{[self._get_title(i[2]) for i in pinned_items]}"
+            )
+
+        final_scored = selected_pool[:max(max_results, len(pinned_items))]
 
         final_papers = [
             paper
