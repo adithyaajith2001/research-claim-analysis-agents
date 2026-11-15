@@ -9,6 +9,7 @@ import SignUp from "./pages/SignUp";
 import Analysis from "./pages/Analysis";
 import About from "./pages/About";
 import Account from "./pages/Account";
+import Explore from "./pages/Explore";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 import { getSession } from "./services/authService";
@@ -28,8 +29,15 @@ function App() {
 
         <Route
           path="/"
+          element={<Home />}
+        />
+
+        <Route
+          path="/login"
           element={getSession() ? <Navigate to="/home" replace /> : <Login />}
         />
+
+        <Route path="/explore" element={<Explore />} />
 
 
         {/* =====================================================
@@ -38,7 +46,7 @@ function App() {
 
         <Route
           path="/home"
-          element={<ProtectedRoute><Home /></ProtectedRoute>}
+          element={<Home />}
         />
 
 

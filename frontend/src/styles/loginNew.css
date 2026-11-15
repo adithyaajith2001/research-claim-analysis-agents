@@ -1520,3 +1520,26 @@ cursor:pointer;
     margin-bottom: 0 !important;
     font-size: 14px !important;
 }
+/* ---------- back link + phones ---------- */
+.login-page { position: relative; }
+.login-back {
+  position: absolute; top: 18px; right: 24px; z-index: 5;
+  color: #c7d8f5; text-decoration: none; font-size: 14px; font-weight: 500;
+  padding: 8px 14px; border-radius: 10px; background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1); transition: background .2s, color .2s;
+}
+.login-back:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+@media (max-width: 900px) {
+  .login-page { grid-template-columns: 1fr; height: auto; min-height: 100vh; overflow-y: auto; overflow-x: hidden; }
+  .left-panel { padding: 64px 22px 8px !important; height: auto !important; }
+  .feature-list { display: none !important; }
+  .right-panel { padding: 8px 14px 32px !important; height: auto !important; }
+  .login-card { width: 100% !important; max-width: 440px; margin: 0 auto; }
+}
+@media (max-width: 900px) {
+  .left-panel { min-width: 0; max-width: 100vw; }
+  .login-hero-title { font-size: clamp(32px, 10vw, 56px) !important; line-height: 1.1 !important; }
+  .login-hero-text { font-size: 16px !important; max-width: 100% !important; line-height: 1.6 !important; }
+  .login-hero, .login-hero * { max-width: 100%; }
+}

@@ -9,6 +9,7 @@ treat all three sources uniformly (get_primary_id(), .to_dict(), etc.)
 instead of crashing on a mixed list of dataclasses and dicts.
 """
 
+import os
 import requests
 from typing import List, Dict, Optional
 from datetime import datetime
@@ -82,7 +83,11 @@ class SemanticScholarRetriever:
         max_retries = 2
         for attempt in range(max_retries):
             try:
-                response = requests.get(self.base_url, params=params, timeout=10)
+                headers = {}
+                api_key = os.getenv("SEMANTIC_SCHOLAR_API_KEY", "").strip()
+                if api_key:
+                    headers["x-api-key"] = api_key
+                response = requests.get(self.base_url, params=params, headers=headers, timeout=10)
 
                 if response.status_code == 429:
                     retry_after = response.headers.get("Retry-After")

@@ -101,11 +101,11 @@ function Navbar() {
           LOGO
       ===================================================== */}
 
-      <div className="logo">
+      <Link to="/" className="logo">
 
         🔬 <span>ResearchClaimAI</span>
 
-      </div>
+      </Link>
 
 
       {/* =====================================================
@@ -120,9 +120,9 @@ function Navbar() {
         <li>
 
           <Link
-            to="/home"
+            to={user ? "/home" : "/"}
             className={
-              location.pathname === "/home"
+              location.pathname === "/home" || location.pathname === "/"
                 ? "active"
                 : ""
             }
@@ -175,6 +175,18 @@ function Navbar() {
         </li>
 
 
+        {/* EXPLORE */}
+
+        <li>
+          <Link
+            to="/explore"
+            className={location.pathname === "/explore" ? "active" : ""}
+          >
+            Explore
+          </Link>
+        </li>
+
+
         {/* ABOUT */}
 
         <li>
@@ -204,9 +216,17 @@ function Navbar() {
 
       <div className="nav-right" ref={rightRef}>
 
+        {!user && (
+          <div className="nav-guest">
+            <Link to="/login" className="nav-signin">Sign in</Link>
+            <Link to="/signup" className="nav-cta">Get started</Link>
+          </div>
+        )}
+
 
         {/* NOTIFICATIONS */}
 
+        {user && (<>
         <div className="nav-menu-wrap">
 
           <button
@@ -335,6 +355,7 @@ function Navbar() {
           )}
 
         </div>
+        </>)}
 
 
       </div>

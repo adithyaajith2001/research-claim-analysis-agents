@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { FaSearch, FaLightbulb, FaFlask, FaCheckCircle } from "react-icons/fa";
 
 import Navbar from "../components/layout/Navbar";
@@ -24,7 +25,8 @@ const TIPS = [
 const MAX_LENGTH = 200;
 
 const Analysis = () => {
-  const [topic, setTopic] = useState("");
+  const location = useLocation();
+  const [topic, setTopic] = useState(location.state?.topic || "");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const startAnalysis = useStartAnalysis();

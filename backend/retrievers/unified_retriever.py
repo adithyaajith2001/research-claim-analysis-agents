@@ -22,6 +22,7 @@ from typing import List, Dict, Optional, Union, Tuple
 
 from arxiv_retriever import ArxivRetriever
 from query_model import extract_query_models
+from known_papers import fetch_known_papers
 from semantic_scholar_retriever import (
     SemanticScholarRetriever
 )
@@ -1179,13 +1180,29 @@ class UnifiedPaperRetriever:
                     results.append([])
             return results
 
-        with ThreadPoolExecutor(max_workers=3) as pool:
+        # Each asked model's own paper is fetched by arXiv ID at the same time.
+        asked_models = extract_query_models(query)
+
+        def _fetch_known():
+            try:
+                return fetch_known_papers(asked_models)
+            except Exception as error:
+                print(f"  → known model papers failed: {error}")
+                return []
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            known_future = pool.submit(_fetch_known)
             futures = {
                 "arxiv": pool.submit(_fetch_source, self.arxiv_retriever.search_arxiv),
                 "semantic": pool.submit(_fetch_source, self.semantic_retriever.search_semantic_scholar),
                 "crossref": pool.submit(_fetch_source, self.crossref_retriever.search_crossref),
             }
             prefetched = {name: future.result() for name, future in futures.items()}
+            known_papers = known_future.result()
+
+        if known_papers:
+            print("\n[0/3] Model's own papers (by arXiv ID)...")
+            add_papers(known_papers, "arXiv")
 
         # ----------------------------------------------------
         # STEP 1: arXiv

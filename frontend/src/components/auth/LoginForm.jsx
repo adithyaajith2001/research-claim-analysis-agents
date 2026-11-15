@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../../firebase";
 import { loginUser, setSession } from "../../services/authService";
@@ -22,6 +22,13 @@ const LoginForm = () => {
   const [error, setError] = useState("");
 
   const navigate = useNavigate();
+  const location = useLocation();
+  // After signing in, go back to where the visitor was heading.
+  const afterLogin = () =>
+    navigate(location.state?.from || "/home", {
+      replace: true,
+      state: location.state?.topic ? { topic: location.state.topic } : undefined
+    });
 
   // ==========================================
   // NORMAL EMAIL/PASSWORD LOGIN
@@ -39,7 +46,7 @@ const LoginForm = () => {
 
     try {
       await loginUser(email, password);
-      navigate("/home");
+      afterLogin();
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     }
@@ -73,7 +80,7 @@ const LoginForm = () => {
       });
 
       // Navigate only after successful login
-      navigate("/home");
+      afterLogin();
 
     } catch (error) {
       console.error("FULL GOOGLE ERROR:", error);
@@ -218,7 +225,7 @@ const LoginForm = () => {
         Don't have an account?
 
         <span
-          onClick={() => navigate("/signup")}
+          onClick={() => navigate("/signup", { state: location.state })}
         >
           {" "}Sign Up
         </span>

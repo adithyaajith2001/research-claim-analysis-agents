@@ -18,6 +18,8 @@ import {
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import useStartAnalysis from "../hooks/useStartAnalysis";
+import useReveal from "../hooks/useReveal";
+import { getSession } from "../services/authService";
 
 import "../styles/landing.css";
 
@@ -94,6 +96,8 @@ const WEIGHTS = [
 function Home() {
   const [query, setQuery] = useState("");
   const startAnalysis = useStartAnalysis();
+  const signedIn = Boolean(getSession());
+  useReveal();
 
   const submit = (event) => {
     event.preventDefault();
@@ -297,8 +301,11 @@ function Home() {
             report or run it again any time.
           </p>
           <div className="lp-cta-actions">
-            <Link to="/analysis" className="lp-btn">
-              Start an analysis <FaArrowRight />
+            <Link to={signedIn ? "/analysis" : "/signup"} className="lp-btn">
+              {signedIn ? "Start an analysis" : "Create a free account"} <FaArrowRight />
+            </Link>
+            <Link to="/explore" className="lp-btn-ghost">
+              Explore models
             </Link>
             <Link to="/about" className="lp-btn-ghost">
               Learn more

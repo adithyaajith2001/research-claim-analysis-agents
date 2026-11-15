@@ -33,3 +33,4 @@ coverage/
 /backend/retrievers/agents/
 frontend/src.zip
 /frontend/src/pages/Dashboard.truncated-backup.jsx
+backend/data/analysis_cache.json

@@ -212,3 +212,10 @@
 @media (prefers-reduced-motion: reduce) {
   .lp *, .lp-search button { transition: none !important; }
 }
+
+/* ---------- scroll reveal ---------- */
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
+.reveal.reveal-in { opacity: 1; transform: none; }
+.lp-card, .lp-steps li { transition: transform .2s, border-color .2s, box-shadow .2s; }
+.lp-card:hover, .lp-steps li:hover { transform: translateY(-4px); border-color: #3b5bdb; box-shadow: 0 16px 36px rgba(37, 99, 235, .18); }
+@media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }

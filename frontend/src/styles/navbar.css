@@ -198,3 +198,21 @@ button.user-box{border:0;cursor:pointer;font:inherit;font-size:15px}
   .nav-dropdown { position: fixed; left: 12px; right: 12px; width: auto; top: 112px; }
 }
 @media(max-width:900px){.user-box span.nav-avatar-initial{display:flex}}
+
+/* ---------------- visitors (not signed in) ---------------- */
+a.logo{text-decoration:none}
+.nav-guest{display:flex;align-items:center;gap:10px}
+.nav-signin{color:#c7d8f5;text-decoration:none;font-weight:500;font-size:15px;padding:9px 14px;border-radius:10px;transition:.2s}
+.nav-signin:hover{background:#1b2c53;color:#4da6ff}
+.nav-cta{color:#fff;text-decoration:none;font-weight:600;font-size:15px;padding:9px 18px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);box-shadow:0 6px 18px rgba(59,130,246,.35);transition:transform .2s,box-shadow .2s}
+.nav-cta:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(59,130,246,.45)}
+@media (max-width:720px){.nav-signin{display:none}}
+/* five links must fit on a phone */
+@media (max-width: 720px) {
+  .nav-links a { padding: 8px 9px; font-size: 13.5px; }
+}
+@media (max-width: 380px) {
+  .nav-links a { padding: 8px 6px; font-size: 13px; }
+  .logo { font-size: 18px; }
+}
+@media (max-width:720px){.nav-cta{padding:7px 12px;font-size:13.5px}}

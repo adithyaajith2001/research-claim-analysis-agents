@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { registerUser } from "../services/authService";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import {
   FaBrain,
@@ -11,6 +11,7 @@ import {
 
 function SignUp() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -50,7 +51,7 @@ function SignUp() {
 
     // Redirect to Login page after 1.8 seconds
     setTimeout(() => {
-      navigate("/");
+      navigate("/login", { state: location.state });
     }, 1800);
   };
 
@@ -170,7 +171,7 @@ function SignUp() {
 
           Already have an account?
 
-          <span onClick={() => navigate("/")}>
+          <span onClick={() => navigate("/login", { state: location.state })}>
             {" "}Login
           </span>
 

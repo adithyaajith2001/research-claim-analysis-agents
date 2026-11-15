@@ -1,6 +1,7 @@
 import truststore
 truststore.inject_into_ssl()
 import html
+import json
 import os
 import sys
 import threading
@@ -85,6 +86,11 @@ class AnalysisRequest(BaseModel):
         ),
     )
 
+    refresh: bool = Field(
+        default=False,
+        description="Ignore any saved report and analyse again",
+    )
+
     max_results: int = Field(
         default=8,
         ge=1,
@@ -118,6 +124,24 @@ def health():
     return {
         "status": "healthy",
         "message": "FastAPI backend is running",
+    }
+
+
+# ============================================================
+# SUPPORTED MODELS AND BENCHMARKS (for the Explore page)
+# ============================================================
+
+@app.get("/api/catalog")
+def catalog():
+
+    from known_papers import KNOWN_MODEL_PAPERS
+
+    return {
+        "models_with_own_paper": [
+            {"key": key, "arxiv_id": arxiv_id}
+            for key, arxiv_id, _ in KNOWN_MODEL_PAPERS
+        ],
+        "cached_reports": len(ANALYSIS_CACHE),
     }
 
 
@@ -621,6 +645,67 @@ JOBS_LOCK = threading.Lock()
 ACTIVE_JOB = {"id": None}
 
 
+# ------------------------------------------------------------
+# RESULT CACHE
+# A question that was answered recently is returned instantly, so the
+# second time (or in a live demo) nobody waits a minute. Only reports
+# that actually contain claims are kept, so a temporary network problem
+# is never remembered as "no results".
+# ------------------------------------------------------------
+
+CACHE_FILE = os.path.join(BACKEND_DIR, "data", "analysis_cache.json")
+CACHE_TTL_SECONDS = 7 * 24 * 3600
+CACHE_LOCK = threading.Lock()
+ANALYSIS_CACHE = {}
+
+
+def _cache_key(query, max_results):
+    return " ".join(str(query).lower().split()) + f"|{int(max_results)}"
+
+
+def _load_cache():
+    try:
+        with open(CACHE_FILE, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        if isinstance(data, dict):
+            ANALYSIS_CACHE.update(data)
+    except Exception:
+        pass
+
+
+def _save_cache():
+    try:
+        os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+        with open(CACHE_FILE, "w", encoding="utf-8") as handle:
+            json.dump(ANALYSIS_CACHE, handle)
+    except Exception as error:
+        print(f"Could not save analysis cache: {error}")
+
+
+def _cache_get(query, max_results):
+    with CACHE_LOCK:
+        entry = ANALYSIS_CACHE.get(_cache_key(query, max_results))
+    if not entry:
+        return None
+    if time.time() - entry.get("saved_at", 0) > CACHE_TTL_SECONDS:
+        return None
+    return entry.get("result")
+
+
+def _cache_put(query, max_results, result):
+    if not result or not result.get("claims"):
+        return
+    with CACHE_LOCK:
+        ANALYSIS_CACHE[_cache_key(query, max_results)] = {
+            "saved_at": time.time(),
+            "result": result,
+        }
+        _save_cache()
+
+
+_load_cache()
+
+
 def _run_job(job_id, query, max_results):
 
     job = JOBS[job_id]
@@ -644,6 +729,7 @@ def _run_job(job_id, query, max_results):
             pipeline_output,
             time.perf_counter() - started,
         )
+        _cache_put(query, max_results, job["result"])
         job["stage"] = "done"
         job["percent"] = 100
         job["message"] = "Analysis complete"
@@ -680,6 +766,27 @@ def start_job(
             status_code=400,
             detail="Research query cannot be empty."
         )
+
+    cached = None if request.refresh else _cache_get(query, request.max_results)
+
+    if cached is not None:
+        job_id = uuid.uuid4().hex
+        now = time.time()
+        result = dict(cached)
+        result["from_cache"] = True
+        JOBS[job_id] = {
+            "job_id": job_id,
+            "query": query,
+            "status": "done",
+            "stage": "done",
+            "percent": 100,
+            "message": "Loaded a saved report",
+            "started_at": now,
+            "finished_at": now,
+            "result": result,
+        }
+        print(f"Served from cache: {query}")
+        return {"job_id": job_id, "status": "done"}
 
     with JOBS_LOCK:
 

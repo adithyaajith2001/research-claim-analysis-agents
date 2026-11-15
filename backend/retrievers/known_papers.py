@@ -1,0 +1,139 @@
+"""
+Each well-known model's own paper, fetched directly from arXiv by ID.
+
+Search engines often miss a model's own paper (for example the Llama 2 or
+Gemma 2 paper) because newer papers that merely mention the model rank
+above it, and Semantic Scholar rate-limits without an API key. When the
+question names a model we know, its paper is fetched by ID so the numbers
+in the paper's own results tables are always available.
+
+Every fetched paper is checked against an expected title word, so a wrong
+ID can never put an unrelated paper into a report.
+"""
+
+import copy
+import re
+import threading
+from typing import Dict, List, Tuple
+
+import requests
+
+from arxiv_retriever import parse_papers_from_xml
+
+# (normalised model prefix, arXiv id, word the title must contain)
+KNOWN_MODEL_PAPERS: List[Tuple[str, str, str]] = [
+    ("mistral7b", "2310.06825", "mistral"),
+    ("mixtral", "2401.04088", "mixtral"),
+    ("llama2", "2307.09288", "llama"),
+    ("llama3", "2407.21783", "llama"),
+    ("llama", "2302.13971", "llama"),
+    ("codellama", "2308.12950", "code llama"),
+    ("gpt4", "2303.08774", "gpt-4"),
+    ("gpt3", "2005.14165", "language models"),
+    ("gemma3", "2503.19786", "gemma"),
+    ("gemma2", "2408.00118", "gemma"),
+    ("gemma", "2403.08295", "gemma"),
+    ("gemini1.5", "2403.05530", "gemini"),
+    ("gemini", "2312.11805", "gemini"),
+    ("phi3", "2404.14219", "phi-3"),
+    ("qwen2.5", "2412.15115", "qwen"),
+    ("qwen2", "2407.10671", "qwen"),
+    ("deepseekv3", "2412.19437", "deepseek"),
+    ("deepseekr1", "2501.12948", "deepseek"),
+    ("falcon", "2311.16867", "falcon"),
+    ("palm", "2204.02311", "palm"),
+    ("yi", "2403.04652", "yi"),
+    ("olmo", "2402.00838", "olmo"),
+]
+
+ARXIV_ENDPOINTS = (
+    "https://export.arxiv.org/api/query",
+    "https://arxiv.org/api/query",
+)
+
+_CACHE: Dict[str, object] = {}
+_LOCK = threading.Lock()
+
+
+def _normalise(text: str) -> str:
+    return re.sub(r"[^a-z0-9.]", "", str(text or "").lower())
+
+
+def known_ids_for_models(models: List[str]) -> List[Tuple[str, str]]:
+    """Return [(arxiv_id, expected_title_word)] for the asked models."""
+    found = []
+    seen = set()
+
+    for model in models or []:
+        key = _normalise(model)
+        best = None
+
+        for prefix, arxiv_id, word in KNOWN_MODEL_PAPERS:
+            if key.startswith(prefix) and (best is None or len(prefix) > len(best[0])):
+                best = (prefix, arxiv_id, word)
+
+        if best and best[1] not in seen:
+            seen.add(best[1])
+            found.append((best[1], best[2]))
+
+    return found
+
+
+def _fetch_one(arxiv_id: str, title_word: str):
+    with _LOCK:
+        if arxiv_id in _CACHE:
+            return _CACHE[arxiv_id]
+
+    paper = None
+
+    for endpoint in ARXIV_ENDPOINTS:
+        try:
+            response = requests.get(
+                endpoint,
+                params={"id_list": arxiv_id, "max_results": 1},
+                timeout=20,
+                verify=False,
+                headers={"User-Agent": "ResearchClaimAI/1.0"},
+            )
+            if response.status_code != 200:
+                continue
+
+            papers = parse_papers_from_xml(response.text, arxiv_id)
+            if papers:
+                paper = papers[0]
+                break
+        except Exception as error:
+            print(f"  → known paper {arxiv_id}: {error}")
+
+    if paper is not None:
+        title = str(getattr(paper, "title", "") or "").lower()
+        if title_word not in title:
+            print(
+                f"  → known paper {arxiv_id} skipped: title "
+                f"{title!r} does not contain {title_word!r}"
+            )
+            paper = None
+
+    with _LOCK:
+        if paper is not None:
+            _CACHE[arxiv_id] = paper
+
+    return paper
+
+
+def fetch_known_papers(models: List[str]):
+    """Fetch the asked models' own papers (empty list if none known)."""
+    papers = []
+
+    for arxiv_id, word in known_ids_for_models(models):
+        paper = _fetch_one(arxiv_id, word)
+        if paper is not None:
+            print(f"  → known model paper: {paper.title} ({arxiv_id})")
+            papers.append(copy.deepcopy(paper))
+
+    return papers
+
+
+def supported_models() -> List[str]:
+    """Names shown on the website's Explore page."""
+    return [prefix for prefix, _, _ in KNOWN_MODEL_PAPERS]
