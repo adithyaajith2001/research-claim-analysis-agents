@@ -1136,6 +1136,13 @@ def run_pipeline(
                             "model_name": item.get("model_name"),
                             "benchmark": item.get("benchmark_name"),
                             "reported_value": item.get("reported_value"),
+                            # True when the model is the one asked about but the
+                            # benchmark is a different one (e.g. MMLU-Pro vs MMLU).
+                            "same_model": bool(query_models) and claim_matches_any(
+                                query_models,
+                                item.get("model_name"),
+                                item.get("claim", ""),
+                            ),
                         })
                         print(
                             "[left out] "

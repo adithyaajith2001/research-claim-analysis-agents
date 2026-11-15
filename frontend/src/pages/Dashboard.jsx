@@ -109,6 +109,12 @@ function Dashboard() {
     ? analysisData.skippedClaims
     : [];
 
+  // Same model, different benchmark (e.g. MMLU-Pro when MMLU was asked).
+  const closestMatches =
+    claims.length === 0
+      ? skippedClaims.filter((item) => item.same_model).slice(0, 6)
+      : [];
+
   const score = Number(analysisData?.confidence) || 0;
   const level = analysisData?.confidenceLevel || "Low";
   const breakdown = analysisData?.confidenceBreakdown || {};
@@ -446,6 +452,33 @@ function Dashboard() {
               </div>
             )}
           </section>
+
+
+          {/* ---------- CLOSEST MATCHES ---------- */}
+          {closestMatches.length > 0 && (
+            <section className="rc-card">
+              <h2 className="rc-section-title">Closest matches</h2>
+              <p className="rc-section-note">
+                No result for the exact benchmark you asked about was found,
+                but the papers report {modelLabel || "this model"} on other
+                benchmarks. These are shown for context only. They are
+                different tests, so they are not scored and should not be
+                read as your answer.
+              </p>
+              <ul className="rc-skipped">
+                {closestMatches.map((item, index) => (
+                  <li key={index}>
+                    <strong>{item.model_name || "Unknown model"}</strong>
+                    {" · "}
+                    {item.benchmark || "Unknown benchmark"}
+                    {" · "}
+                    {item.reported_value}
+                    <small>{item.paper_title}</small>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
 
           {/* ---------- LEFT OUT ---------- */}
