@@ -5335,7 +5335,9 @@ def extract_claims_from_text(
                     ),
                     {
                         "max_output_tokens":
-                            MAX_OUTPUT_TOKENS_EXTRACTION
+                            MAX_OUTPUT_TOKENS_EXTRACTION,
+                        # Same text should give the same claims every run.
+                        "temperature": 0.0,
                     },
                 )
 
@@ -5497,7 +5499,8 @@ def extract_claims_from_text(
                         ),
                         {
                             "max_output_tokens":
-                                MAX_OUTPUT_TOKENS_EXTRACTION
+                                MAX_OUTPUT_TOKENS_EXTRACTION,
+                            "temperature": 0.0,
                         },
                     )
 

@@ -317,14 +317,27 @@ auditing pipeline.
 Assess the reliability strength of the supplied claim/evidence on a 0-10 scale.
 
 Judge only evidence strength, not whether the claim is true in the abstract.
-Use these signals:
-1. Reproducibility: code/data/checkpoints, seeds, repeated runs, variance/error bars.
-2. Experimental design: clarity of protocol, evaluation setup, robustness checks.
-3. Benchmark standardisation: whether the benchmark, subset, version, and metric
-   are clearly specified and comparable.
+Judge ONLY what the supplied evidence and paper context actually show. Do not
+lower the score because something is simply not shown in the supplied text.
 
-A single benchmark number can still be legitimate evidence, but lack of
-reproducibility/robustness detail should reduce the score.
+Start from this anchor and adjust:
+
+- Start at 6: a result taken from the paper's own results table or text, with
+  the model, benchmark and number clearly tied together.
+- Add 1 if the metric and evaluation setting are stated (for example "5-shot
+  accuracy", "pass@1").
+- Add 1 if the paper states that code, weights or evaluation details are
+  released, or reports repeated runs, variance or error bars.
+- Add 1 if the benchmark is a standard, well-defined one with a clear version
+  or subset.
+- Subtract 2 if the metric or setting is unclear or the number could belong
+  to a different benchmark variant or subset.
+- Subtract 2 if the number is only a sub-component or a derived figure, not
+  the benchmark's headline score.
+- Subtract 2 if the evidence is a prose mention with no table or setting.
+
+Keep the result between 0 and 10. A clearly reported single result on a
+standard benchmark normally lands between 6 and 8.
 
 Return ONLY one JSON object:
 {{
@@ -429,7 +442,7 @@ def score_claim(
                 client,
                 MODEL_NAME,
                 prompt,
-                {"max_output_tokens": MAX_OUTPUT_TOKENS_SCORING},
+                {"max_output_tokens": MAX_OUTPUT_TOKENS_SCORING, "temperature": 0.0},
             )
             raw_response = getattr(response, "text", "") or ""
 
