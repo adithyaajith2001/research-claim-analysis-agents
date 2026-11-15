@@ -571,6 +571,11 @@ function Dashboard() {
                               {item.evaluation_setting && (
                                 <span className="rc-tag">{item.evaluation_setting}</span>
                               )}
+                              {item.setting_note && (
+                                <span className="rc-tag" title={item.setting_note}>
+                                  setting not stated in one paper
+                                </span>
+                              )}
                             </span>
                           </td>
                           <td className="rc-num">{item.reported_value_a}</td>

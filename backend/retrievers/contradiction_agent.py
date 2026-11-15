@@ -165,6 +165,11 @@ def _normalize_model_name(model_name: str) -> str:
     value = str(model_name).strip().lower()
     value = re.sub(r"\bthe\s+", "", value)
     value = re.sub(r"\bmodel\b", "", value)
+    # Release labels that do not change which model it is: "v0.1", "(base)",
+    # "pretrained". Instruct / chat variants are different models and stay.
+    value = re.sub(r"\bv\d+(?:\.\d+)*\b", "", value)
+    value = re.sub(r"\((?:base|pre-?trained)\)", "", value)
+    value = re.sub(r"\b(?:base|pre-?trained)\b", "", value)
     value = re.sub(r"[^a-z0-9]+", "", value)
     return value
 
@@ -537,26 +542,30 @@ def find_contradictions_in_group(
         if context_a["model_key"] != context_b["model_key"]:
             continue
 
-        # Only compare claims with matching evaluation settings.
-        # None matches None, but None does not match a known setting.
-        if (
-            context_a["evaluation_setting"]
-            != context_b["evaluation_setting"]
-        ):
+        # Evaluation settings (0-shot, 5-shot ...).
+        #   both known and different -> not comparable
+        #   both the same (or both unstated) -> comparable
+        #   only one stated -> comparable only as support: such a pair can
+        #   show agreement, but a large gap is not called a contradiction
+        #   because the two numbers may use different settings.
+        setting_a = context_a["evaluation_setting"]
+        setting_b = context_b["evaluation_setting"]
+
+        if setting_a and setting_b and setting_a != setting_b:
             continue
+
+        setting_unconfirmed = bool(setting_a) != bool(setting_b)
 
         # Defensive metric check.
         if context_a["metric"] and context_b["metric"]:
             if context_a["metric"] != context_b["metric"]:
                 continue
 
-        # Defensive measurement-scope check.
-        # If both scopes are known, they must refer to the same population or
-        # aggregation (e.g. average vs Humanities). Unknown scope is allowed
-        # only when the other side is also unknown.
+        # Defensive measurement-scope check. A named subject or category must
+        # match; an unstated scope is treated as the whole-benchmark average.
         scope_a = context_a.get("measurement_scope")
         scope_b = context_b.get("measurement_scope")
-        if scope_a != scope_b:
+        if (scope_a or "average") != (scope_b or "average"):
             continue
 
         if a.reported_value is None or b.reported_value is None:
@@ -577,6 +586,9 @@ def find_contradictions_in_group(
         diff = round(abs(value_a - value_b), 2)
         relation_type, severity = _classify(diff)
 
+        if setting_unconfirmed and relation_type != "Agrees":
+            continue
+
         results.append({
             "claim_a_id": a.id,
             "claim_b_id": b.id,
@@ -585,8 +597,13 @@ def find_contradictions_in_group(
             "benchmark_name": a.benchmark_name,
             "value_type": a.value_type,
             "model_name": context_a["model_key"],
-            "evaluation_setting": context_a["evaluation_setting"],
-            "metric": context_a["metric"],
+            "evaluation_setting": setting_a or setting_b,
+            "setting_note": (
+                "One paper does not state its evaluation setting"
+                if setting_unconfirmed
+                else None
+            ),
+            "metric": context_a["metric"] or context_b["metric"],
             "measurement_scope": context_a.get("measurement_scope"),
             "reported_value_a": a.reported_value,
             "reported_value_b": b.reported_value,
@@ -752,10 +769,10 @@ def detect_all_contradictions(session=None) -> list:
             "claims whose settings are also unknown"
         )
 
-    by_group: Dict[
-        Tuple[str, str, str, str, str, str],
-        List[Dict[str, Any]],
-    ] = {}
+    # Group by benchmark + value type + model. Setting, metric and scope are
+    # checked pair by pair so one paper stating "5-shot" can still be matched
+    # with another that leaves it out.
+    by_group: Dict[Tuple[str, str, str], List[Dict[str, Any]]] = {}
 
     for context in contexts:
         claim = context["claim"]
@@ -764,9 +781,6 @@ def detect_all_contradictions(session=None) -> list:
             str(claim.benchmark_name).strip().lower(),
             str(claim.value_type).strip().lower(),
             context["model_key"],
-            context["evaluation_setting"],
-            context["metric"] or "",
-            context.get("measurement_scope") or "",
         )
 
         by_group.setdefault(
@@ -780,9 +794,6 @@ def detect_all_contradictions(session=None) -> list:
         benchmark_name,
         value_type,
         model_key,
-        evaluation_setting,
-        metric,
-        measurement_scope,
     ), group in by_group.items():
         pairs = find_contradictions_in_group(group)
 
@@ -804,10 +815,7 @@ def detect_all_contradictions(session=None) -> list:
         if len(group) >= 2:
             print(
                 f"[info] {benchmark_name} ({value_type}) | "
-                f"model={_display_model(model_key)} | "
-                f"setting={_display_setting(evaluation_setting)} | "
-                f"metric={_display_metric(metric)} | "
-                f"scope={measurement_scope or 'UNKNOWN_SCOPE'}: "
+                f"model={_display_model(model_key)}: "
                 f"compared {len(group)} claim(s), found {len(pairs)} pair(s)"
             )
 

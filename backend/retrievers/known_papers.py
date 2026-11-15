@@ -46,6 +46,23 @@ KNOWN_MODEL_PAPERS: List[Tuple[str, str, str]] = [
     ("olmo", "2402.00838", "olmo"),
 ]
 
+# Other well-known papers that tabulate a model as a baseline, so a second
+# source exists to confirm or question its numbers. Keyed by the same
+# normalised prefix as above; values are prefixes from KNOWN_MODEL_PAPERS.
+COMPARISON_SOURCES: Dict[str, List[str]] = {
+    "mistral7b": ["mixtral", "gemma", "llama3"],
+    "mixtral": ["mistral7b", "llama2"],
+    "llama2": ["mistral7b", "gemma"],
+    "llama3": ["gemma2"],
+    "gpt4": ["llama2", "gemini"],
+    "gemma2": ["gemma3"],
+    "gemma3": ["gemma2"],
+    "gemma": ["gemma2", "mistral7b"],
+    "gemini": ["gpt4"],
+}
+
+MAX_COMPARISON_PAPERS = 2
+
 ARXIV_ENDPOINTS = (
     "https://export.arxiv.org/api/query",
     "https://arxiv.org/api/query",
@@ -129,6 +146,41 @@ def fetch_known_papers(models: List[str]):
         paper = _fetch_one(arxiv_id, word)
         if paper is not None:
             print(f"  → known model paper: {paper.title} ({arxiv_id})")
+            papers.append(copy.deepcopy(paper))
+
+    return papers
+
+
+def comparison_ids_for_models(models: List[str]) -> List[Tuple[str, str]]:
+    """Return [(arxiv_id, title_word)] of papers that benchmark the asked models."""
+    own = {arxiv_id for arxiv_id, _ in known_ids_for_models(models)}
+    by_prefix = {prefix: (arxiv_id, word) for prefix, arxiv_id, word in KNOWN_MODEL_PAPERS}
+    found = []
+
+    for model in models or []:
+        key = _normalise(model)
+        best = None
+
+        for prefix in COMPARISON_SOURCES:
+            if key.startswith(prefix) and (best is None or len(prefix) > len(best)):
+                best = prefix
+
+        for prefix in COMPARISON_SOURCES.get(best, []):
+            entry = by_prefix.get(prefix)
+            if entry and entry[0] not in own and entry not in found:
+                found.append(entry)
+
+    return found[:MAX_COMPARISON_PAPERS]
+
+
+def fetch_comparison_papers(models: List[str]):
+    """Fetch up to MAX_COMPARISON_PAPERS related papers (empty if none known)."""
+    papers = []
+
+    for arxiv_id, word in comparison_ids_for_models(models):
+        paper = _fetch_one(arxiv_id, word)
+        if paper is not None:
+            print(f"  → comparison paper: {paper.title} ({arxiv_id})")
             papers.append(copy.deepcopy(paper))
 
     return papers

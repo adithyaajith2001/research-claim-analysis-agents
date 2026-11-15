@@ -22,7 +22,7 @@ from typing import List, Dict, Optional, Union, Tuple
 
 from arxiv_retriever import ArxivRetriever
 from query_model import extract_query_models
-from known_papers import fetch_known_papers
+from known_papers import fetch_known_papers, fetch_comparison_papers
 from semantic_scholar_retriever import (
     SemanticScholarRetriever
 )
@@ -1185,7 +1185,10 @@ class UnifiedPaperRetriever:
 
         def _fetch_known():
             try:
-                return fetch_known_papers(asked_models)
+                own = fetch_known_papers(asked_models)
+                # Related papers that tabulate the model as a baseline give a
+                # second source, so cross-paper comparison has something to compare.
+                return own + fetch_comparison_papers(asked_models)
             except Exception as error:
                 print(f"  → known model papers failed: {error}")
                 return []
@@ -1551,6 +1554,12 @@ class UnifiedPaperRetriever:
         ]
 
         if pinned_items:
+            # The asked model's own paper first, related papers after it.
+            order = {
+                self._normalized_title(paper): index
+                for index, paper in enumerate(known_papers)
+            }
+            pinned_items.sort(key=lambda item: order.get(self._normalized_title(item[2]), 99))
             selected_pool = pinned_items + [
                 item for item in selected_pool
                 if self._normalized_title(item[2]) not in pinned_keys
