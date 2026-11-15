@@ -1,0 +1,43 @@
+.ap-backdrop {
+  position: fixed; inset: 0; z-index: 2000; display: grid; place-items: center; padding: 20px;
+  background: rgba(3, 6, 18, 0.72); backdrop-filter: blur(6px);
+  animation: ap-fade .18s ease-out;
+}
+.ap-dialog {
+  position: relative; width: min(440px, 100%); padding: 34px 30px 26px; text-align: center;
+  border-radius: 22px; color: #e5e7eb;
+  background: linear-gradient(180deg, #111a38, #0a1126);
+  border: 1px solid #2a3a73; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  animation: ap-pop .22s cubic-bezier(.2,.9,.3,1.2);
+}
+.ap-close {
+  position: absolute; top: 14px; right: 14px; width: 34px; height: 34px; border-radius: 10px;
+  border: 0; cursor: pointer; color: #aab4d4; background: transparent; display: grid; place-items: center;
+}
+.ap-close:hover { background: #1b2750; color: #fff; }
+.ap-icon {
+  width: 54px; height: 54px; margin: 0 auto 16px; border-radius: 16px; display: grid; place-items: center;
+  color: #fff; font-size: 20px; background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  box-shadow: 0 10px 26px rgba(59, 130, 246, 0.4);
+}
+.ap-dialog h2 { margin: 0 0 8px; font-size: 22px; color: #fff; }
+.ap-text { margin: 0 0 18px; color: #aab4d4; font-size: 15px; line-height: 1.55; }
+.ap-topic {
+  margin: 0 0 20px; padding: 12px 14px; border-radius: 12px; text-align: left;
+  background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(96, 165, 250, 0.25);
+}
+.ap-topic small { display: block; color: #8fb4f5; font-size: 12px; margin-bottom: 2px; }
+.ap-topic strong { color: #fff; font-size: 15px; font-weight: 600; word-break: break-word; }
+.ap-primary, .ap-secondary {
+  display: block; width: 100%; padding: 13px 16px; border-radius: 12px; font: inherit; font-size: 15px;
+  font-weight: 600; cursor: pointer; transition: transform .15s, box-shadow .15s, background .15s;
+}
+.ap-primary { border: 0; color: #fff; background: linear-gradient(135deg, #3b82f6, #8b5cf6); box-shadow: 0 8px 22px rgba(59,130,246,.35); }
+.ap-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(59,130,246,.45); }
+.ap-secondary { margin-top: 10px; color: #dbe6ff; background: transparent; border: 1px solid #34457f; }
+.ap-secondary:hover { background: #162040; }
+.ap-primary:focus-visible, .ap-secondary:focus-visible, .ap-close:focus-visible { outline: 2px solid #93c5fd; outline-offset: 2px; }
+.ap-fine { margin: 14px 0 0; font-size: 12.5px; color: #7f8bb0; }
+@keyframes ap-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ap-pop { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ap-backdrop, .ap-dialog { animation: none; } }

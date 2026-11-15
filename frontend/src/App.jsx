@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+import { AuthPromptProvider } from "./context/AuthPromptContext";
 import Loading from "./components/loading/Loading";
 
 import Login from "./pages/Login";
@@ -20,6 +21,8 @@ function App() {
   return (
 
     <BrowserRouter>
+
+      <AuthPromptProvider>
 
       <Routes>
 
@@ -108,6 +111,8 @@ function App() {
         <Route path="*" element={<NotFound />} />
 
       </Routes>
+
+      </AuthPromptProvider>
 
     </BrowserRouter>
 

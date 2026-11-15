@@ -2,23 +2,25 @@ import { useContext, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnalysisContext } from "../context/AnalysisContext";
 import { getSession } from "../services/authService";
+import { useAuthPrompt } from "../context/AuthPromptContext";
 
 // Shared by the Home and Analysis pages: stores the question and opens the
 // loading page, which runs the real analysis.
 export default function useStartAnalysis() {
   const { setAnalysisData } = useContext(AnalysisContext);
   const navigate = useNavigate();
+  const { openAuthPrompt } = useAuthPrompt();
 
   return useCallback(
     (topic) => {
       const trimmed = String(topic || "").trim();
       if (!trimmed) return false;
 
-      // Visitors can try the search box; they sign in first, then the
-      // question is waiting for them on the Analysis page.
+      // Visitors can type a question; a popup asks them to sign in, and the
+      // question is waiting for them on the Analysis page afterwards.
       if (!getSession()) {
-        navigate("/login", { state: { from: "/analysis", topic: trimmed } });
-        return true;
+        openAuthPrompt(trimmed);
+        return false;
       }
 
       setAnalysisData((previous) => ({
@@ -39,6 +41,6 @@ export default function useStartAnalysis() {
       navigate("/loading", { state: { topic: trimmed } });
       return true;
     },
-    [setAnalysisData, navigate]
+    [setAnalysisData, navigate, openAuthPrompt]
   );
 }
