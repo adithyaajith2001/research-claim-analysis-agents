@@ -4967,11 +4967,34 @@ def _clean_json_response(
 # REAL GEMINI CLAIM EXTRACTION
 # ============================================================
 
+def _with_model_hint(context_text, focus_models):
+    """
+    Tell Gemini which model the user asked about. Comparison tables often
+    list another paper's model as a baseline column (the Gemma 3 report has
+    a Gemma 2 27B column); those rows answer the question too and would
+    otherwise be crowded out by the paper's own models.
+    """
+    models = [str(m).strip() for m in (focus_models or []) if str(m).strip()]
+    if not models:
+        return context_text
+
+    return (
+        "NOTE: the reader is asking about: "
+        + ", ".join(models)
+        + ". If a table below has a column or row for one of these "
+        "models, even as a baseline from another paper, extract its "
+        "values FIRST, using the model name exactly as the table writes "
+        "it, before values for other models.\n\n"
+        + str(context_text)
+    )
+
+
 def extract_claims_from_text(
     paper_id: str,
     text: str,
     client=None,
-    focus_benchmarks=None
+    focus_benchmarks=None,
+    focus_models=None
 ) -> list:
     """
     Extract quantitative claims from ONE paper using Gemini.
@@ -5151,7 +5174,7 @@ def extract_claims_from_text(
                         benchmarks=", ".join(
                             VALIDATED_BENCHMARKS
                         ),
-                        chunk=context_text
+                        chunk=_with_model_hint(context_text, focus_models)
                     ),
                     {
                         "max_output_tokens":
@@ -5313,7 +5336,7 @@ def extract_claims_from_text(
                             benchmarks=", ".join(
                                 VALIDATED_BENCHMARKS
                             ),
-                            chunk=context_text,
+                            chunk=_with_model_hint(context_text, focus_models),
                         ),
                         {
                             "max_output_tokens":

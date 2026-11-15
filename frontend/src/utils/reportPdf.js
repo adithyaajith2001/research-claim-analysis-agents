@@ -116,7 +116,7 @@ export function downloadReportPdf(analysisData) {
     );
   } else {
     paragraph(
-      `Overall confidence: ${Number(data.confidence || 0).toFixed(1)} / 10 (${info.label})`,
+      `Overall confidence: ${formatScore(Number(data.confidence || 0))} / 10 (${info.label})`,
       12,
       INK,
       true

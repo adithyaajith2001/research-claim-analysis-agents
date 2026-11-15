@@ -44,7 +44,7 @@ function ConfidenceRing({ score, tone }) {
   const offset = circumference * (1 - numeric / 10);
 
   return (
-    <div className="rc-ring" role="img" aria-label={`Confidence ${numeric.toFixed(1)} out of 10`}>
+    <div className="rc-ring" role="img" aria-label={`Confidence ${formatScore(numeric)} out of 10`}>
       <svg viewBox="0 0 160 160" width="190" height="190">
         <circle
           cx="80"
@@ -64,7 +64,7 @@ function ConfidenceRing({ score, tone }) {
       </svg>
 
       <div className="rc-ring-label">
-        <strong>{numeric.toFixed(1)}</strong>
+        <strong>{formatScore(numeric)}</strong>
         <span>out of 10</span>
       </div>
     </div>

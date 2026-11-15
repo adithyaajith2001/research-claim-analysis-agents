@@ -65,9 +65,19 @@ export function scoreTone(score) {
   return "low";
 }
 
+// Shows one decimal, or two when one decimal would hide which side of a
+// confidence boundary (6 and 8) the score is on. 5.96 must not read as 6.0
+// next to a "Low" label.
 export function formatScore(score) {
   const value = Number(score);
-  return Number.isFinite(value) ? value.toFixed(1) : "-";
+  if (!Number.isFinite(value)) return "-";
+
+  const oneDecimal = value.toFixed(1);
+  const crossesBoundary = [6, 8].some(
+    (edge) => value < edge && Number(oneDecimal) >= edge
+  );
+
+  return crossesBoundary ? value.toFixed(2) : oneDecimal;
 }
 
 export function formatSeconds(totalSeconds) {

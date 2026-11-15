@@ -1016,7 +1016,8 @@ def run_pipeline(
                     paper_id=paper["id"],
                     text=text,
                     client=client,
-                    focus_benchmarks=query_benchmark_names
+                    focus_benchmarks=query_benchmark_names,
+                    focus_models=query_models
                 )
                 print(
                     f"[timing] Claim extraction for paper "
@@ -1112,7 +1113,8 @@ def run_pipeline(
                 claims = extract_claims_from_text(
                     paper_id=paper["id"],
                     text=paper_text,
-                    client=client
+                    client=client,
+                    focus_models=query_models
                 )
 
             print(f"[timing] Claim extraction for this paper: {time.perf_counter() - stage_start:.2f}s")
