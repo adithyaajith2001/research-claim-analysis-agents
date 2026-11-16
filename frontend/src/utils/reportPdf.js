@@ -9,6 +9,7 @@ import {
   claimVerdict,
   formatValue,
   sourceCount,
+  shortAuthors,
   SINGLE_SOURCE_NOTE,
   isSubsetClaim,
   SUBSET_NOTE
@@ -209,7 +210,7 @@ export function downloadReportPdf(analysisData) {
   papers.forEach((paper, index) => {
     paragraph(`${index + 1}. ${paper.title || "Untitled"}`, 10.5, INK, true);
 
-    const meta = [paper.authors, paper.year, paper.source].filter(Boolean).join(" · ");
+    const meta = [shortAuthors(paper.authors), paper.year, paper.source].filter(Boolean).join(" · ");
     if (meta) paragraph(meta, 9, MUTED);
 
     const link = paper.url || paper.pdf_url;

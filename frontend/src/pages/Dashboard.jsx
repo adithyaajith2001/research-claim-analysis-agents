@@ -15,6 +15,7 @@ import {
   claimSourceText,
   formatValue,
   sourceCount,
+  shortAuthors,
   SINGLE_SOURCE_NOTE,
   isSubsetClaim,
   SUBSET_NOTE
@@ -625,7 +626,7 @@ function Dashboard() {
                     </h3>
 
                     <p className="rc-paper-meta">
-                      {[paper.authors, paper.year, paper.source]
+                      {[shortAuthors(paper.authors), paper.year, paper.source]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>

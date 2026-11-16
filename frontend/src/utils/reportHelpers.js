@@ -134,6 +134,18 @@ export function formatValue(claim) {
 }
 
 
+// Papers such as Llama 2 or GPT-4 list hundreds of authors. Show the first
+// three and "et al." so the paper cards stay readable.
+export function shortAuthors(authors, limit = 3) {
+  if (!authors) return "";
+  const names = Array.isArray(authors)
+    ? authors
+    : String(authors).split(/\s*(?:,|\||;|\band\b)\s*/);
+  const clean = names.map((name) => name.trim()).filter(Boolean);
+  if (clean.length <= limit) return clean.join(", ");
+  return `${clean.slice(0, limit).join(", ")} et al.`;
+}
+
 // Number of different papers the claims come from.
 export function sourceCount(claims) {
   return new Set((claims || []).map((claim) => claim.paper_id ?? claim.paper_title)).size;
