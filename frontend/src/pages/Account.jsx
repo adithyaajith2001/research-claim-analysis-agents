@@ -15,6 +15,7 @@ import {
   clearHistory,
   deleteHistoryEntry,
   getHistory,
+  syncHistory,
   timeAgo
 } from "../services/historyService";
 
@@ -50,6 +51,18 @@ function Account() {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.name || "");
   const [confirmClear, setConfirmClear] = useState(false);
+
+  // Bring in this account's saved history from the backend.
+  useEffect(() => {
+    if (!user) return undefined;
+    let cancelled = false;
+    syncHistory(user.email).then((merged) => {
+      if (!cancelled) setHistory(merged);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email]);
 
   // Scroll to the history section when linked as /account#history
   useEffect(() => {

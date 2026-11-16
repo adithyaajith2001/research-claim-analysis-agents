@@ -873,6 +873,90 @@ def get_job(job_id: str):
 
 
 # ============================================================
+# ACCOUNT HISTORY
+#
+# Each account's past reports are kept on the server (keyed by the
+# account's email), not only in the browser, so the history is still
+# there after the browser's site data is cleared or on another device.
+# This is demo-grade: there is no server-side login, so the email is
+# trusted as given.
+# ============================================================
+
+HISTORY_FILE = os.path.join(BACKEND_DIR, "data", "history.json")
+HISTORY_LOCK = threading.Lock()
+HISTORY_MAX = 30
+
+
+def _history_email(email: str) -> str:
+    return str(email or "").strip().lower()
+
+
+def _history_read() -> dict:
+    try:
+        with open(HISTORY_FILE, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+        return data if isinstance(data, dict) else {}
+    except FileNotFoundError:
+        return {}
+    except Exception as error:
+        print(f"[warn] could not read history: {error}")
+        return {}
+
+
+def _history_write(data: dict) -> None:
+    os.makedirs(os.path.dirname(HISTORY_FILE), exist_ok=True)
+    temp = HISTORY_FILE + ".tmp"
+    with open(temp, "w", encoding="utf-8") as handle:
+        json.dump(data, handle)
+    os.replace(temp, HISTORY_FILE)
+
+
+class HistoryEntryRequest(BaseModel):
+    email: str
+    entry: dict
+
+
+@app.get("/api/history")
+def get_history(email: str):
+    key = _history_email(email)
+    if not key:
+        raise HTTPException(status_code=400, detail="email is required")
+    with HISTORY_LOCK:
+        return {"entries": _history_read().get(key, [])}
+
+
+@app.post("/api/history")
+def add_history(request: HistoryEntryRequest):
+    key = _history_email(request.email)
+    entry = request.entry
+    if not key or not entry.get("id"):
+        raise HTTPException(status_code=400, detail="email and entry id are required")
+    with HISTORY_LOCK:
+        data = _history_read()
+        entries = [e for e in data.get(key, []) if e.get("id") != entry["id"]]
+        entries.insert(0, entry)
+        entries.sort(key=lambda e: str(e.get("timestamp", "")), reverse=True)
+        data[key] = entries[:HISTORY_MAX]
+        _history_write(data)
+    return {"ok": True, "count": len(data[key])}
+
+
+@app.delete("/api/history")
+def delete_history(email: str, id: str = ""):
+    key = _history_email(email)
+    if not key:
+        raise HTTPException(status_code=400, detail="email is required")
+    with HISTORY_LOCK:
+        data = _history_read()
+        if id:
+            data[key] = [e for e in data.get(key, []) if e.get("id") != id]
+        else:
+            data[key] = []
+        _history_write(data)
+    return {"ok": True}
+
+
+# ============================================================
 # RUN DIRECTLY
 # ============================================================
 

@@ -6,6 +6,23 @@
 
 const MAX_ENTRIES = 30;
 
+// History is also saved on the backend (per account email) so it survives
+// clearing the browser's site data. If the backend is unreachable the
+// browser copy keeps working on its own.
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+const apiHistoryUrl = (email, extra = "") =>
+  `${API_BASE_URL}/api/history?email=${encodeURIComponent(email)}${extra}`;
+
+const sendQuietly = (url, options) => {
+  try {
+    fetch(url, options).catch(() => {});
+  } catch {
+    /* backend not reachable: the browser copy still works */
+  }
+};
+
 const historyKey = (email) => `researchClaimHistory:${email}`;
 const seenKey = (email) => `researchClaimNotificationsSeen:${email}`;
 
@@ -59,6 +76,12 @@ export function addHistoryEntry(email, analysis) {
     list.pop();
   }
 
+  sendQuietly(`${API_BASE_URL}/api/history`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, entry })
+  });
+
   return entry;
 }
 
@@ -67,10 +90,59 @@ export function deleteHistoryEntry(email, id) {
     historyKey(email),
     getHistory(email).filter((entry) => entry.id !== id)
   );
+  sendQuietly(apiHistoryUrl(email, `&id=${encodeURIComponent(id)}`), {
+    method: "DELETE"
+  });
 }
 
 export function clearHistory(email) {
   write(historyKey(email), []);
+  sendQuietly(apiHistoryUrl(email), { method: "DELETE" });
+}
+
+// Merge the account's history from the backend with this browser's copy,
+// keep the newest MAX_ENTRIES, and return the merged list. Entries that exist
+// only in this browser are sent to the backend so nothing is lost.
+export async function syncHistory(email) {
+  if (!email) return [];
+
+  const local = getHistory(email);
+
+  let remote = [];
+  try {
+    const response = await fetch(apiHistoryUrl(email));
+    if (!response.ok) return local;
+    const data = await response.json();
+    remote = Array.isArray(data.entries) ? data.entries : [];
+  } catch {
+    return local;
+  }
+
+  const byId = new Map();
+  [...remote, ...local].forEach((entry) => {
+    if (entry?.id && !byId.has(entry.id)) byId.set(entry.id, entry);
+  });
+
+  const merged = [...byId.values()]
+    .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
+    .slice(0, MAX_ENTRIES);
+
+  while (merged.length && !write(historyKey(email), merged)) {
+    merged.pop();
+  }
+
+  const remoteIds = new Set(remote.map((entry) => entry.id));
+  merged
+    .filter((entry) => !remoteIds.has(entry.id))
+    .forEach((entry) =>
+      sendQuietly(`${API_BASE_URL}/api/history`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, entry })
+      })
+    );
+
+  return merged;
 }
 
 // ---------------- notifications (built from history) ----------------

@@ -7,6 +7,7 @@ import { auth } from "../../firebase";
 import { clearSession, getSession } from "../../services/authService";
 import {
   getNotifications,
+  syncHistory,
   markNotificationsSeen,
   timeAgo
 } from "../../services/historyService";
@@ -27,6 +28,18 @@ function Navbar() {
   );
 
   const rightRef = useRef(null);
+
+  // Load this account's saved history from the backend, then refresh the bell.
+  useEffect(() => {
+    if (!user) return undefined;
+    let cancelled = false;
+    syncHistory(user.email).then(() => {
+      if (!cancelled) setNotifications(getNotifications(user.email));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.email]);
 
   const unreadCount = notifications.filter((item) => item.unread).length;
   const displayName = user?.name || user?.email || "Guest";
