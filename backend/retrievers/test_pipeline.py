@@ -879,6 +879,65 @@ def run_contradiction_regression_test() -> dict:
 # MAIN PIPELINE
 # ============================================================
 
+def drop_repeated_claims(claims: list) -> list:
+    """
+    Remove the same result stated twice by one paper.
+
+    A paper often gives a number in both a table and a sentence, so the
+    extractor returns two claims with the same model, benchmark and value.
+    Keep one (preferring the one that states its evaluation setting) so a
+    single result is not counted twice.
+    """
+    def _norm(text):
+        return re.sub(r"[^a-z0-9]", "", str(text or "").lower())
+
+    groups = {}
+    order = []
+
+    for item in claims:
+        try:
+            value = round(float(item.get("reported_value")), 2)
+        except (TypeError, ValueError):
+            value = None
+
+        key = (
+            item.get("paper_id"),
+            _norm(item.get("model_name")),
+            _norm(item.get("benchmark_name")),
+            value,
+            _norm(item.get("evaluation_setting")) or None,
+        )
+
+        # Same result where only one copy states a setting: treat as one.
+        loose = key[:4]
+        match = None
+        for known in order:
+            if known[:4] == loose and (known[4] is None or key[4] is None or known[4] == key[4]):
+                match = known
+                break
+
+        if match is None:
+            order.append(key)
+            groups[key] = item
+            continue
+
+        if value is None:
+            order.append(key)
+            groups[key] = item
+            continue
+
+        kept = groups[match]
+        if not kept.get("evaluation_setting") and item.get("evaluation_setting"):
+            groups[match] = item
+
+    result = [groups[key] for key in order]
+
+    if len(result) < len(claims):
+        print(f"[dedupe] merged {len(claims) - len(result)} repeated claim(s)")
+
+    return result
+
+
 def run_pipeline(
     query: str = LIVE_QUERY,
     max_results: int = 8,
@@ -1162,7 +1221,7 @@ def run_pipeline(
                             f"value={item.get('reported_value')}"
                         )
                 skipped_other_models += len(claims) - len(kept_claims)
-                claims = kept_claims
+                claims = drop_repeated_claims(kept_claims)
                 print(
                     f"Claims about {', '.join(query_models)}: {len(claims)}"
                 )
