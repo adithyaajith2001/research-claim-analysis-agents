@@ -62,9 +62,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+    # Extra allowed sites can be added with CORS_ORIGINS="https://a.com,https://b.com"
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        *[o.strip() for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()],
     ],
     allow_credentials=True,
     allow_methods=["*"],
