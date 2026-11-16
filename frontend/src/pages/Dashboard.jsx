@@ -564,7 +564,7 @@ function Dashboard() {
                         <tr key={index}>
                           <td>
                             <span className="rc-claim-text">
-                              {item.model_name || "Same model"}
+                              {item.model_label || item.model_name || "Same model"}
                             </span>
                             <span className="rc-claim-tags">
                               <span className="rc-tag">{item.benchmark_name}</span>

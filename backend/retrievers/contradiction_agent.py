@@ -174,6 +174,17 @@ def _normalize_model_name(model_name: str) -> str:
     return value
 
 
+def _model_label(claim_text: str) -> Optional[str]:
+    """Readable model name as written in the claim (e.g. 'Mistral 7B')."""
+    text = " ".join(str(claim_text or "").split())
+    verbs = "|".join(sorted((re.escape(v) for v in _MODEL_VERBS), key=len, reverse=True))
+    match = re.match(rf"^\s*(.+?)\s+(?:{verbs})\b", text, flags=re.IGNORECASE)
+    if not match:
+        return None
+    label = re.sub(r"^the\s+", "", match.group(1).strip(" .,:;-"), flags=re.IGNORECASE)
+    return label or None
+
+
 def _extract_model_name(claim_text: str) -> Optional[str]:
     """
     Extract the model subject from common claim formulations.
@@ -597,6 +608,7 @@ def find_contradictions_in_group(
             "benchmark_name": a.benchmark_name,
             "value_type": a.value_type,
             "model_name": context_a["model_key"],
+            "model_label": _model_label(a.claim_text) or context_a["model_key"],
             "evaluation_setting": setting_a or setting_b,
             "setting_note": (
                 "One paper does not state its evaluation setting"
