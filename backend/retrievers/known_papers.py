@@ -76,6 +76,11 @@ def _normalise(text: str) -> str:
     return re.sub(r"[^a-z0-9.]", "", str(text or "").lower())
 
 
+# A question that names only the family ("MMLU accuracy of Mistral") most
+# likely means the family's flagship paper.
+BARE_FAMILY_ALIASES = {"mistral": "mistral7b"}
+
+
 def known_ids_for_models(models: List[str]) -> List[Tuple[str, str]]:
     """Return [(arxiv_id, expected_title_word)] for the asked models."""
     found = []
@@ -83,6 +88,7 @@ def known_ids_for_models(models: List[str]) -> List[Tuple[str, str]]:
 
     for model in models or []:
         key = _normalise(model)
+        key = BARE_FAMILY_ALIASES.get(key, key)
         best = None
 
         for prefix, arxiv_id, word in KNOWN_MODEL_PAPERS:
