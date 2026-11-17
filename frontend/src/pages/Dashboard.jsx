@@ -96,6 +96,10 @@ function Dashboard() {
     ? analysisData.paperList
     : [];
 
+  // Which paper a compared claim came from, looked up by claim id.
+  const paperOf = (claimId) =>
+    claims.find((c) => String(c.claim_id) === String(claimId))?.paper_title || "";
+
   const comparisons = Array.isArray(analysisData?.contradictions)
     ? analysisData.contradictions
     : [];
@@ -579,8 +583,18 @@ function Dashboard() {
                               )}
                             </span>
                           </td>
-                          <td className="rc-num">{item.reported_value_a}</td>
-                          <td className="rc-num">{item.reported_value_b}</td>
+                          <td className="rc-num">
+                            {item.reported_value_a}
+                            {paperOf(item.claim_a_id) && (
+                              <small className="rc-paper-under">{paperOf(item.claim_a_id)}</small>
+                            )}
+                          </td>
+                          <td className="rc-num">
+                            {item.reported_value_b}
+                            {paperOf(item.claim_b_id) && (
+                              <small className="rc-paper-under">{paperOf(item.claim_b_id)}</small>
+                            )}
+                          </td>
                           <td className="rc-num">{item.value_diff}</td>
                           <td>
                             <Badge tone={tone}>

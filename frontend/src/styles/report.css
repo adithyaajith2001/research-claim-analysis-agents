@@ -120,3 +120,15 @@
 .rc-skipped{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
 .rc-skipped li{padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:15px}
 .rc-skipped small{display:block;margin-top:2px;color:var(--muted);font-size:13px}
+
+/* Paper name shown under a value in the comparison table */
+.rc-paper-under {
+  display: block;
+  margin-top: 4px;
+  max-width: 220px;
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #93a4c3;
+  white-space: normal;
+}
