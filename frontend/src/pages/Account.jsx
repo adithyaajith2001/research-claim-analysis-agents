@@ -64,6 +64,26 @@ function Account() {
     };
   }, [user?.email]);
 
+  // Refresh the list whenever this tab is opened again, so searches made
+  // meanwhile (or on another device) show up without reloading.
+  useEffect(() => {
+    if (!user) return undefined;
+
+    const refresh = () => {
+      if (document.visibilityState === "hidden") return;
+      setHistory(getHistory(user.email));
+      syncHistory(user.email).then(setHistory);
+    };
+
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [user?.email]);
+
   // Scroll to the history section when linked as /account#history
   useEffect(() => {
     if (location.hash === "#history") {
@@ -89,6 +109,13 @@ function Account() {
   const provider = user?.provider === "google" ? "Google" : "Email and password";
 
   const openReport = (entry) => {
+    // A very old entry whose full report did not fit in the browser:
+    // ask again (a saved report opens instantly).
+    if (!entry.analysis) {
+      runAgain(entry);
+      return;
+    }
+
     updateAnalysisData({ ...entry.analysis, status: "Analyzed" });
     navigate("/dashboard");
   };
@@ -218,7 +245,7 @@ function Account() {
               <div>
                 <h2 className="rc-section-title">Search history</h2>
                 <p className="rc-section-note">
-                  Your past analyses, saved in this browser. Open one to see
+                  Your past analyses, saved to your account. Open one to see
                   its report again without waiting.
                 </p>
               </div>

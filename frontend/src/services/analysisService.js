@@ -83,7 +83,14 @@ function friendlyError(error) {
  * it every 2 seconds and calls onProgress({stage, percent, message,
  * elapsedSeconds}) so the loading page can show what is really happening.
  */
-export async function analyzeTopic(query, maxResults = 5, onProgress, refresh = false) {
+export async function analyzeTopic(
+  query,
+  maxResults = 5,
+  onProgress,
+  refresh = false,
+  options = {}
+) {
+  const { restart = false, onJobId } = options;
   const trimmedQuery = String(query || "").trim();
 
   if (!trimmedQuery) {
@@ -95,11 +102,15 @@ export async function analyzeTopic(query, maxResults = 5, onProgress, refresh = 
   try {
     const start = await axios.post(
       `${API_BASE_URL}/api/jobs`,
-      { query: trimmedQuery, max_results: maxResults, refresh },
+      { query: trimmedQuery, max_results: maxResults, refresh, restart },
       { headers: { "Content-Type": "application/json" }, timeout: 30000 }
     );
 
     jobId = start.data.job_id;
+
+    if (typeof onJobId === "function") {
+      onJobId(jobId);
+    }
   } catch (error) {
     throw friendlyError(error);
   }
@@ -143,6 +154,12 @@ export async function analyzeTopic(query, maxResults = 5, onProgress, refresh = 
       return shapeResult(job.result || {}, trimmedQuery);
     }
 
+    if (job.status === "cancelled") {
+      const stopped = new Error("The analysis was stopped.");
+      stopped.cancelled = true;
+      throw stopped;
+    }
+
     if (job.status === "error") {
       throw new Error(job.message || "Research analysis failed.");
     }
@@ -152,4 +169,23 @@ export async function analyzeTopic(query, maxResults = 5, onProgress, refresh = 
     "The analysis is taking longer than expected. " +
       "Please try again with a more specific topic."
   );
+}
+
+
+/**
+ * Ask the backend to stop a running analysis. Never throws: if the backend
+ * cannot be reached there is nothing left running to stop.
+ */
+export async function cancelAnalysis(jobId) {
+  if (!jobId) return;
+
+  try {
+    await axios.post(
+      `${API_BASE_URL}/api/jobs/${jobId}/cancel`,
+      {},
+      { timeout: 10000 }
+    );
+  } catch {
+    /* ignore */
+  }
 }

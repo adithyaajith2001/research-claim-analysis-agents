@@ -3,6 +3,7 @@
 Shared retry wrapper for Gemini model calls.
 """
 
+from cancel import check_cancelled
 import hashlib
 import json
 import os
@@ -89,6 +90,8 @@ def call_with_retry(
     Retry transient 503 errors with shorter exponential backoff.
     max_retries is the maximum total number of attempts.
     """
+    check_cancelled()
+
     max_attempts = max(1, int(max_retries))
 
     # A fixed seed plus temperature 0 keeps the model as repeatable as it can be.
@@ -107,6 +110,8 @@ def call_with_retry(
             return SimpleNamespace(text=cached, from_cache=True)
 
     for attempt in range(1, max_attempts + 1):
+        check_cancelled()
+
         try:
             response = client.models.generate_content(
                 model=model,

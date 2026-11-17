@@ -29,6 +29,7 @@ After this pipeline works correctly, the same orchestration will be exposed
 through FastAPI and then consumed by the React frontend.
 """
 
+from cancel import check_cancelled
 import os
 import re
 import sys
@@ -947,6 +948,8 @@ def run_pipeline(
 
     def report(stage, percent, message):
         """Tell the caller (the API) what the pipeline is doing right now."""
+        check_cancelled()  # a stop request ends the run here
+
         if progress_callback is None:
             return
         try:

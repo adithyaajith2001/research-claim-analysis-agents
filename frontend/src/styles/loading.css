@@ -553,3 +553,13 @@
 .loading-button.primary:hover {
   background: #2563eb;
 }
+
+/* Stop / Start over buttons under the progress bar */
+.loading-button svg {
+  margin-right: 8px;
+  vertical-align: -2px;
+}
+
+.loading-page .progress-section + .loading-actions {
+  margin-top: 22px;
+}

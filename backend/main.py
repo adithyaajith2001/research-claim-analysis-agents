@@ -41,6 +41,7 @@ if RETRIEVERS_DIR not in sys.path:
 # ============================================================
 
 from test_pipeline import run_pipeline
+from cancel import AnalysisCancelled, clear_stop, request_stop
 
 
 # ============================================================
@@ -91,6 +92,14 @@ class AnalysisRequest(BaseModel):
     refresh: bool = Field(
         default=False,
         description="Ignore any saved report and analyse again",
+    )
+
+    restart: bool = Field(
+        default=False,
+        description=(
+            "Stop the analysis that is running now (if any) "
+            "and start this one instead"
+        ),
     )
 
     max_results: int = Field(
@@ -718,6 +727,7 @@ def _run_job(job_id, query, max_results):
         job["message"] = message
 
     try:
+        clear_stop()
         started = time.perf_counter()
 
         pipeline_output = run_pipeline(
@@ -737,6 +747,11 @@ def _run_job(job_id, query, max_results):
         job["message"] = "Analysis complete"
         job["status"] = "done"
 
+    except AnalysisCancelled:
+        print(f"Analysis stopped by the user: {job['query']}")
+        job["status"] = "cancelled"
+        job["message"] = "Analysis stopped"
+
     except Exception as error:
 
         print()
@@ -754,6 +769,45 @@ def _run_job(job_id, query, max_results):
         with JOBS_LOCK:
             if ACTIVE_JOB["id"] == job_id:
                 ACTIVE_JOB["id"] = None
+
+
+def _stop_active_job(wait_seconds=0):
+    """Ask the running analysis to stop; optionally wait until it has."""
+
+    with JOBS_LOCK:
+        active_id = ACTIVE_JOB["id"]
+        active = JOBS.get(active_id) if active_id else None
+
+        if active is not None and active["status"] == "running":
+            active["status"] = "cancelled"
+            active["message"] = "Analysis stopped"
+            request_stop()
+
+    deadline = time.time() + wait_seconds
+
+    while wait_seconds and time.time() < deadline:
+        with JOBS_LOCK:
+            if ACTIVE_JOB["id"] is None:
+                return True
+        time.sleep(0.4)
+
+    with JOBS_LOCK:
+        return ACTIVE_JOB["id"] is None
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+def cancel_job(job_id: str):
+    """Stop an analysis the user no longer wants."""
+
+    job = JOBS.get(job_id)
+
+    if job is None:
+        raise HTTPException(status_code=404, detail="Unknown analysis job.")
+
+    if job["status"] == "running" and ACTIVE_JOB["id"] == job_id:
+        _stop_active_job()
+
+    return {"job_id": job_id, "status": job["status"]}
 
 
 @app.post("/api/jobs")
@@ -790,12 +844,24 @@ def start_job(
         print(f"Served from cache: {query}")
         return {"job_id": job_id, "status": "done"}
 
+    if request.restart:
+        _stop_active_job(wait_seconds=90)
+
     with JOBS_LOCK:
 
         active_id = ACTIVE_JOB["id"]
 
         if active_id is not None:
             active = JOBS[active_id]
+
+            if active["status"] == "cancelled":
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "The previous analysis is still stopping. "
+                        "Please try again in a few seconds."
+                    ),
+                )
 
             # Same query again (double click / page reload): reuse it.
             if active["query"].casefold() == query.casefold():

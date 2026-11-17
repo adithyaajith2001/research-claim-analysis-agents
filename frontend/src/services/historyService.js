@@ -44,6 +44,25 @@ function write(key, value) {
   }
 }
 
+// Save the list in the browser. If the browser is full, drop the oldest
+// saved reports first; as a last resort keep the newest entries without
+// their full report (the backend still has them), so a new search never
+// disappears from the list.
+function saveHistoryList(email, list) {
+  const key = historyKey(email);
+  const items = [...list];
+
+  while (items.length > 1 && !write(key, items)) {
+    items.pop();
+  }
+
+  if (items.length && write(key, items)) return items;
+
+  const light = items.map(({ analysis, ...rest }) => rest);
+  write(key, light);
+  return light;
+}
+
 export function getHistory(email) {
   if (!email) return [];
   const list = read(historyKey(email), []);
@@ -71,10 +90,7 @@ export function addHistoryEntry(email, analysis) {
 
   const list = [entry, ...getHistory(email)].slice(0, MAX_ENTRIES);
 
-  // If the browser is full, drop the oldest saved reports until it fits.
-  while (list.length && !write(historyKey(email), list)) {
-    list.pop();
-  }
+  saveHistoryList(email, list);
 
   sendQuietly(`${API_BASE_URL}/api/history`, {
     method: "POST",
@@ -103,20 +119,35 @@ export function clearHistory(email) {
 // Merge the account's history from the backend with this browser's copy,
 // keep the newest MAX_ENTRIES, and return the merged list. Entries that exist
 // only in this browser are sent to the backend so nothing is lost.
-export async function syncHistory(email) {
-  if (!email) return [];
+const inFlightSync = new Map();
 
-  const local = getHistory(email);
+export function syncHistory(email) {
+  if (!email) return Promise.resolve([]);
 
+  // Pages ask for a sync as they open; share one request instead of
+  // running several at once.
+  if (!inFlightSync.has(email)) {
+    const job = doSync(email).finally(() => inFlightSync.delete(email));
+    inFlightSync.set(email, job);
+  }
+
+  return inFlightSync.get(email);
+}
+
+async function doSync(email) {
   let remote = [];
   try {
     const response = await fetch(apiHistoryUrl(email));
-    if (!response.ok) return local;
+    if (!response.ok) return getHistory(email);
     const data = await response.json();
     remote = Array.isArray(data.entries) ? data.entries : [];
   } catch {
-    return local;
+    return getHistory(email);
   }
+
+  // Read the browser copy only now. A report saved while the request was
+  // in flight must not be overwritten by an older copy.
+  const local = getHistory(email);
 
   const byId = new Map();
   [...remote, ...local].forEach((entry) => {
@@ -127,9 +158,7 @@ export async function syncHistory(email) {
     .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)))
     .slice(0, MAX_ENTRIES);
 
-  while (merged.length && !write(historyKey(email), merged)) {
-    merged.pop();
-  }
+  const saved = saveHistoryList(email, merged);
 
   const remoteIds = new Set(remote.map((entry) => entry.id));
   merged
@@ -142,7 +171,7 @@ export async function syncHistory(email) {
       })
     );
 
-  return merged;
+  return saved;
 }
 
 // ---------------- notifications (built from history) ----------------

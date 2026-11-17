@@ -184,11 +184,14 @@ function Explore() {
 
                     <a
                       className="ex-paper"
-                      href={`https://arxiv.org/search/?query=${encodeURIComponent(model.name)}&searchtype=title`}
+                      href={
+                        model.link ||
+                        `https://arxiv.org/search/?query=${encodeURIComponent(model.name)}&searchtype=title`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      Find the paper on arXiv <FaExternalLinkAlt aria-hidden="true" />
+                      {model.linkLabel || "Find the paper on arXiv"} <FaExternalLinkAlt aria-hidden="true" />
                     </a>
                   </article>
                 ))}

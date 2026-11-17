@@ -16,7 +16,9 @@ import {
   FaBrain,
   FaCheckCircle,
   FaChartLine,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaStop,
+  FaRedoAlt
 } from "react-icons/fa";
 
 import {
@@ -24,7 +26,8 @@ import {
 } from "../../context/AnalysisContext";
 
 import {
-  analyzeTopic
+  analyzeTopic,
+  cancelAnalysis
 } from "../../services/analysisService";
 
 import { getSession } from "../../services/authService";
@@ -93,6 +96,7 @@ const Loading = () => {
 
   const {
     analysisData,
+    setAnalysisData,
     updateAnalysisData
   } = useContext(AnalysisContext);
 
@@ -102,6 +106,10 @@ const Loading = () => {
     "Research Topic";
 
   const startedRef = useRef(false);
+  const mountedRef = useRef(true);
+  const runIdRef = useRef(0);          // which run is the current one
+  const jobIdRef = useRef(null);       // backend job of the current run
+  const stopWantedRef = useRef(false); // Stop pressed before the job id arrived
 
   const [progress, setProgress] = useState({
     stage: "retrieval",
@@ -110,6 +118,14 @@ const Loading = () => {
   });
   const [elapsed, setElapsed] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
+  const [stopped, setStopped] = useState(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
 
   // ----------------------------------------------------------
@@ -117,7 +133,7 @@ const Loading = () => {
   // ----------------------------------------------------------
 
   useEffect(() => {
-    if (errorMessage) {
+    if (errorMessage || stopped) {
       return undefined;
     }
 
@@ -126,12 +142,128 @@ const Loading = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [errorMessage]);
+  }, [errorMessage, stopped]);
 
 
   // ----------------------------------------------------------
-  // Run the analysis once and follow its real progress
+  // Run one analysis and follow its real progress.
+  // `restart` tells the backend to stop whatever is running first.
   // ----------------------------------------------------------
+
+  // Nothing is running any more, so the dashboard must not wait for it.
+  const markIdle = () => {
+    setAnalysisData((previous) =>
+      previous.status === "Analyzing"
+        ? { ...previous, status: "Not Analyzed", isAnalyzing: false }
+        : previous
+    );
+  };
+
+  const runAnalysis = async (restart, refresh) => {
+    runIdRef.current += 1;
+    const myRun = runIdRef.current;
+    const isCurrent = () => myRun === runIdRef.current;
+
+    jobIdRef.current = null;
+    stopWantedRef.current = false;
+
+    setErrorMessage("");
+    setStopped(false);
+    setElapsed(0);
+    setAnalysisData((previous) => ({
+      ...previous,
+      topic,
+      status: "Analyzing",
+      isAnalyzing: true
+    }));
+    setProgress({ stage: "retrieval", percent: 2, message: "Starting analysis" });
+
+    try {
+      const result = await analyzeTopic(
+        topic,
+        5,
+        (update) => {
+          if (!isCurrent()) return;
+          setProgress({
+            stage: update.stage,
+            percent: update.percent,
+            message: update.message
+          });
+        },
+        refresh,
+        {
+          restart,
+          onJobId: (id) => {
+            jobIdRef.current = id;
+            // Stop was pressed while the job was still being created.
+            if (stopWantedRef.current) cancelAnalysis(id);
+          }
+        }
+      );
+
+      if (!isCurrent()) return;
+
+      const confidenceScore = Number(result.confidence?.overall_score);
+
+      const finished = {
+        topic: result.query || topic,
+        confidence: Number.isFinite(confidenceScore)
+          ? confidenceScore
+          : 0,
+        confidenceLevel: result.confidence?.confidence_level || "Low",
+        confidenceBreakdown: result.confidence?.breakdown || {},
+        claims: result.claims_extracted,
+        claimsExtracted: result.claims_extracted,
+        extractedClaims: result.claims,
+        papers: result.papers_retrieved,
+        papers_retrieved: result.papers_retrieved,
+        paperList: result.papers,
+        summary: result.summary,
+        status: "Analyzed",
+        supportingPapers: result.supportingPapers,
+        contradictingPapers: result.contradictingPapers,
+        neutralPapers: result.neutralPapers,
+        contradictions: result.contradictions,
+        analysisSeconds: result.analysis_seconds,
+        queryModels: result.query_models,
+        fromCache: result.from_cache,
+        claimsSkippedOtherModels: result.claims_skipped_other_models,
+        skippedClaims: result.skipped_claims,
+        rawResponse: result.rawResponse
+      };
+
+      // These two always run, even if the person has opened another page
+      // while waiting, so the dashboard and history are up to date.
+      updateAnalysisData(finished);
+
+      const session = getSession();
+      if (session) {
+        addHistoryEntry(session.email, finished);
+      }
+
+      if (mountedRef.current) {
+        navigate("/dashboard", { replace: true });
+      }
+    } catch (error) {
+      if (!isCurrent()) return;
+
+      markIdle();
+
+      if (error?.cancelled) {
+        if (mountedRef.current) setStopped(true);
+        return;
+      }
+
+      console.error("ResearchClaimAI analysis failed:", error);
+
+      if (mountedRef.current) {
+        setErrorMessage(
+          error?.message ||
+            "Something went wrong while analysing this topic."
+        );
+      }
+    }
+  };
 
   useEffect(() => {
     if (startedRef.current) {
@@ -139,76 +271,72 @@ const Loading = () => {
     }
 
     startedRef.current = true;
+    runAnalysis(false, Boolean(location.state?.refresh));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    const run = async () => {
-      try {
-        const result = await analyzeTopic(
-          topic,
-          5,
-          (update) => {
-            setProgress({
-              stage: update.stage,
-              percent: update.percent,
-              message: update.message
-            });
-          },
-          Boolean(location.state?.refresh)
-        );
 
-        const confidenceScore = Number(result.confidence?.overall_score);
+  // Stop the analysis that is running.
+  const handleStop = () => {
+    runIdRef.current += 1; // ignore anything the stopped run still reports
+    stopWantedRef.current = true;
+    cancelAnalysis(jobIdRef.current);
+    markIdle();
+    setStopped(true);
+  };
 
-        const finished = {
-          topic: result.query || topic,
-          confidence: Number.isFinite(confidenceScore)
-            ? confidenceScore
-            : 0,
-          confidenceLevel: result.confidence?.confidence_level || "Low",
-          confidenceBreakdown: result.confidence?.breakdown || {},
-          claims: result.claims_extracted,
-          claimsExtracted: result.claims_extracted,
-          extractedClaims: result.claims,
-          papers: result.papers_retrieved,
-          papers_retrieved: result.papers_retrieved,
-          paperList: result.papers,
-          summary: result.summary,
-          status: "Analyzed",
-          supportingPapers: result.supportingPapers,
-          contradictingPapers: result.contradictingPapers,
-          neutralPapers: result.neutralPapers,
-          contradictions: result.contradictions,
-          analysisSeconds: result.analysis_seconds,
-          queryModels: result.query_models,
-          fromCache: result.from_cache,
-          claimsSkippedOtherModels: result.claims_skipped_other_models,
-          skippedClaims: result.skipped_claims,
-          rawResponse: result.rawResponse
-        };
-
-        updateAnalysisData(finished);
-
-        // Save to this account's search history
-        const session = getSession();
-        if (session) {
-          addHistoryEntry(session.email, finished);
-        }
-
-        navigate("/dashboard", { replace: true });
-      } catch (error) {
-        console.error("ResearchClaimAI analysis failed:", error);
-
-        setErrorMessage(
-          error?.message ||
-            "Something went wrong while analysing this topic."
-        );
-      }
-    };
-
-    run();
-  }, [navigate, topic, updateAnalysisData]);
+  // Stop the current analysis and begin the same question again.
+  const handleRestart = () => {
+    if (jobIdRef.current) cancelAnalysis(jobIdRef.current);
+    runAnalysis(true, true);
+  };
 
 
   const activeStep = stepIndexForStage(progress.stage);
   const percent = Math.min(Math.max(Number(progress.percent) || 0, 0), 100);
+
+
+  // ----------------------------------------------------------
+  // Stopped screen
+  // ----------------------------------------------------------
+
+  if (stopped) {
+    return (
+      <div className="loading-page">
+        <div className="loading-card">
+          <div className="loading-header">
+            <div className="loading-logo error-logo">
+              <FaStop />
+            </div>
+            <h1>Analysis stopped</h1>
+            <p>Nothing was saved. You can start this question again or ask a different one.</p>
+          </div>
+
+          <div className="loading-topic-box">
+            <span>RESEARCH TOPIC</span>
+            <h2>{topic}</h2>
+          </div>
+
+          <div className="loading-actions">
+            <button
+              type="button"
+              className="loading-button primary"
+              onClick={() => runAnalysis(true, true)}
+            >
+              Start this topic again
+            </button>
+            <button
+              type="button"
+              className="loading-button"
+              onClick={() => navigate("/analysis")}
+            >
+              Try another topic
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
 
   // ----------------------------------------------------------
@@ -243,7 +371,7 @@ const Loading = () => {
             <button
               type="button"
               className="loading-button"
-              onClick={() => window.location.reload()}
+              onClick={() => runAnalysis(true, true)}
             >
               Retry this topic
             </button>
@@ -326,9 +454,26 @@ const Loading = () => {
           </div>
         </div>
 
+        <div className="loading-actions">
+          <button
+            type="button"
+            className="loading-button"
+            onClick={handleStop}
+          >
+            <FaStop aria-hidden="true" /> Stop analysis
+          </button>
+          <button
+            type="button"
+            className="loading-button"
+            onClick={handleRestart}
+          >
+            <FaRedoAlt aria-hidden="true" /> Start over
+          </button>
+        </div>
+
         <p className="loading-footer">
           Time elapsed {formatElapsed(elapsed)}. A full analysis usually
-          takes 2–4 minutes. Please keep this tab open.
+          takes 1–3 minutes. Please keep this tab open.
         </p>
       </div>
     </div>

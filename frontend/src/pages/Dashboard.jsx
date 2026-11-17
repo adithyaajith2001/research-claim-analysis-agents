@@ -1,4 +1,4 @@
-import { Fragment, useContext, useMemo, useState } from "react";
+import { Fragment, useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Navbar from "../components/layout/Navbar";
@@ -21,6 +21,8 @@ import {
   SUBSET_NOTE
 } from "../utils/reportHelpers";
 import { downloadReportPdf } from "../utils/reportPdf";
+import { getSession } from "../services/authService";
+import { getHistory, syncHistory } from "../services/historyService";
 
 import "../styles/report.css";
 
@@ -80,13 +82,54 @@ function ConfidenceRing({ score, tone }) {
 function Dashboard() {
   const navigate = useNavigate();
 
-  const { analysisData } = useContext(AnalysisContext);
+  const { analysisData, updateAnalysisData } = useContext(AnalysisContext);
 
+  const [loadingLatest, setLoadingLatest] = useState(false);
   const [openClaim, setOpenClaim] = useState(null);
   const [openPaper, setOpenPaper] = useState(null);
 
   const topic = analysisData?.topic || "";
   const status = analysisData?.status || "";
+
+  // Opened with nothing in memory (page reloaded, or opened from the menu
+  // before running anything): show this account's latest saved report
+  // instead of an empty page.
+  const nothingLoaded = !topic || status === "Not Analyzed";
+
+  useEffect(() => {
+    if (!nothingLoaded) return undefined;
+
+    const user = getSession();
+    if (!user) return undefined;
+
+    let cancelled = false;
+
+    const open = (list) => {
+      const latest = (list || []).find((entry) => entry?.analysis);
+      if (latest && !cancelled) {
+        updateAnalysisData({ ...latest.analysis, status: "Analyzed" });
+      }
+    };
+
+    const local = getHistory(user.email);
+
+    if (local.some((entry) => entry?.analysis)) {
+      open(local);
+      return undefined;
+    }
+
+    setLoadingLatest(true);
+    syncHistory(user.email)
+      .then(open)
+      .finally(() => {
+        if (!cancelled) setLoadingLatest(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nothingLoaded]);
 
   const claims = Array.isArray(analysisData?.extractedClaims)
     ? analysisData.extractedClaims
@@ -168,6 +211,42 @@ function Dashboard() {
 
   const hasResult =
     topic && status !== "Analysis Failed" && status !== "Analyzing" && status !== "Not Analyzed";
+
+  if (status === "Analyzing") {
+    return (
+      <>
+        <Navbar />
+        <main className="rc-page">
+          <div className="rc-container">
+            <section className="rc-card rc-empty">
+              <h1>Your analysis is still running</h1>
+              <p>
+                “{topic}” is being checked. This page fills in by itself as
+                soon as the report is ready, so you can leave it open.
+              </p>
+            </section>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (!hasResult && loadingLatest) {
+    return (
+      <>
+        <Navbar />
+        <main className="rc-page">
+          <div className="rc-container">
+            <section className="rc-card rc-empty">
+              <h1>Loading your latest report…</h1>
+            </section>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   if (!hasResult) {
     return (
