@@ -549,8 +549,7 @@ function Dashboard() {
                   <thead>
                     <tr>
                       <th>Model and benchmark</th>
-                      <th>Paper A</th>
-                      <th>Paper B</th>
+                      <th>Papers compared (value reported)</th>
                       <th>Gap</th>
                       <th>Verdict</th>
                     </tr>
@@ -583,17 +582,21 @@ function Dashboard() {
                               )}
                             </span>
                           </td>
-                          <td className="rc-num">
-                            {item.reported_value_a}
-                            {paperOf(item.claim_a_id) && (
-                              <small className="rc-paper-under">{paperOf(item.claim_a_id)}</small>
-                            )}
-                          </td>
-                          <td className="rc-num">
-                            {item.reported_value_b}
-                            {paperOf(item.claim_b_id) && (
-                              <small className="rc-paper-under">{paperOf(item.claim_b_id)}</small>
-                            )}
+                          <td>
+                            <ul className="rc-compared">
+                              <li>
+                                <span className="rc-compared-name">
+                                  {paperOf(item.claim_a_id) || "Paper A"}
+                                </span>
+                                <strong className="rc-compared-value">{item.reported_value_a}</strong>
+                              </li>
+                              <li>
+                                <span className="rc-compared-name">
+                                  {paperOf(item.claim_b_id) || "Paper B"}
+                                </span>
+                                <strong className="rc-compared-value">{item.reported_value_b}</strong>
+                              </li>
+                            </ul>
                           </td>
                           <td className="rc-num">{item.value_diff}</td>
                           <td>
