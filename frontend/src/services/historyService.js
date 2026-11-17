@@ -1,14 +1,16 @@
 // Search history, kept separately for every signed-in account.
 //
-// Stored in this browser under the account's email, so each person sees
-// only their own searches. (To sync across devices, swap these functions
-// for Firestore calls; the rest of the app does not need to change.)
+// The backend is the source of truth: every finished analysis is saved
+// there under the account's email, with its full report. This browser only
+// keeps a small list (topic, score, time) plus the few newest full reports,
+// because a browser can hold only about 5 MB and full reports are large.
+// Opening an older entry fetches its report from the backend.
 
-const MAX_ENTRIES = 30;
+const MAX_ENTRIES = 100;
+const FULL_REPORTS_KEPT = 3; // newest reports also kept whole in the browser
 
-// History is also saved on the backend (per account email) so it survives
-// clearing the browser's site data. If the backend is unreachable the
-// browser copy keeps working on its own.
+// History is saved on the backend per account email. If the backend is
+// unreachable the browser copy keeps working on its own.
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -25,6 +27,14 @@ const sendQuietly = (url, options) => {
 
 const historyKey = (email) => `researchClaimHistory:${email}`;
 const seenKey = (email) => `researchClaimNotificationsSeen:${email}`;
+
+let lastSyncFailed = false;
+
+// True when the last refresh could not reach the backend, so the list shown
+// is only what this browser remembers.
+export function historyOffline() {
+  return lastSyncFailed;
+}
 
 function read(key, fallback) {
   try {
@@ -44,23 +54,26 @@ function write(key, value) {
   }
 }
 
-// Save the list in the browser. If the browser is full, drop the oldest
-// saved reports first; as a last resort keep the newest entries without
-// their full report (the backend still has them), so a new search never
-// disappears from the list.
+// Keep the whole report only for the newest few entries; every other entry
+// is kept as a short line. The short list is tiny, so it always fits.
+function trimForBrowser(list) {
+  return list.map((entry, index) => {
+    if (index < FULL_REPORTS_KEPT || !entry.analysis) return entry;
+    const { analysis, ...rest } = entry;
+    return rest;
+  });
+}
+
 function saveHistoryList(email, list) {
   const key = historyKey(email);
-  const items = [...list];
+  let items = trimForBrowser(list).slice(0, MAX_ENTRIES);
 
-  while (items.length > 1 && !write(key, items)) {
-    items.pop();
-  }
+  if (write(key, items)) return items;
 
-  if (items.length && write(key, items)) return items;
-
-  const light = items.map(({ analysis, ...rest }) => rest);
-  write(key, light);
-  return light;
+  // Still too big (browser nearly full): keep only the short list.
+  items = items.map(({ analysis, ...rest }) => rest);
+  write(key, items);
+  return items;
 }
 
 export function getHistory(email) {
@@ -88,9 +101,7 @@ export function addHistoryEntry(email, analysis) {
     analysis: compact
   };
 
-  const list = [entry, ...getHistory(email)].slice(0, MAX_ENTRIES);
-
-  saveHistoryList(email, list);
+  saveHistoryList(email, [entry, ...getHistory(email)]);
 
   sendQuietly(`${API_BASE_URL}/api/history`, {
     method: "POST",
@@ -101,9 +112,25 @@ export function addHistoryEntry(email, analysis) {
   return entry;
 }
 
+// The full report of a history entry: from this browser if it is still
+// here, otherwise from the backend. Resolves to null if neither has it.
+export async function getFullReport(email, entry) {
+  if (entry?.analysis) return entry.analysis;
+  if (!email || !entry?.id) return null;
+
+  try {
+    const response = await fetch(apiHistoryUrl(email, `&id=${encodeURIComponent(entry.id)}`));
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.entry?.analysis || null;
+  } catch {
+    return null;
+  }
+}
+
 export function deleteHistoryEntry(email, id) {
-  write(
-    historyKey(email),
+  saveHistoryList(
+    email,
     getHistory(email).filter((entry) => entry.id !== id)
   );
   sendQuietly(apiHistoryUrl(email, `&id=${encodeURIComponent(id)}`), {
@@ -136,12 +163,15 @@ export function syncHistory(email) {
 
 async function doSync(email) {
   let remote = [];
+
   try {
     const response = await fetch(apiHistoryUrl(email));
-    if (!response.ok) return getHistory(email);
+    if (!response.ok) throw new Error(`history ${response.status}`);
     const data = await response.json();
     remote = Array.isArray(data.entries) ? data.entries : [];
+    lastSyncFailed = false;
   } catch {
+    lastSyncFailed = true;
     return getHistory(email);
   }
 
@@ -150,8 +180,11 @@ async function doSync(email) {
   const local = getHistory(email);
 
   const byId = new Map();
-  [...remote, ...local].forEach((entry) => {
-    if (entry?.id && !byId.has(entry.id)) byId.set(entry.id, entry);
+  [...local, ...remote].forEach((entry) => {
+    if (!entry?.id) return;
+    const known = byId.get(entry.id);
+    // Prefer the copy that still carries its full report.
+    if (!known || (!known.analysis && entry.analysis)) byId.set(entry.id, entry);
   });
 
   const merged = [...byId.values()]
@@ -160,9 +193,10 @@ async function doSync(email) {
 
   const saved = saveHistoryList(email, merged);
 
+  // Anything that exists only in this browser goes to the backend.
   const remoteIds = new Set(remote.map((entry) => entry.id));
-  merged
-    .filter((entry) => !remoteIds.has(entry.id))
+  local
+    .filter((entry) => entry?.id && !remoteIds.has(entry.id))
     .forEach((entry) =>
       sendQuietly(`${API_BASE_URL}/api/history`, {
         method: "POST",

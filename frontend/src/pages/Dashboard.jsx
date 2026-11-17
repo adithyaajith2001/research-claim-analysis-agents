@@ -22,7 +22,7 @@ import {
 } from "../utils/reportHelpers";
 import { downloadReportPdf } from "../utils/reportPdf";
 import { getSession } from "../services/authService";
-import { getHistory, syncHistory } from "../services/historyService";
+import { getFullReport, getHistory, syncHistory } from "../services/historyService";
 
 import "../styles/report.css";
 
@@ -104,18 +104,22 @@ function Dashboard() {
 
     let cancelled = false;
 
-    const open = (list) => {
-      const latest = (list || []).find((entry) => entry?.analysis);
-      if (latest && !cancelled) {
-        updateAnalysisData({ ...latest.analysis, status: "Analyzed" });
+    const open = async (list) => {
+      const latest = (list || [])[0];
+      if (!latest) return;
+      const analysis = await getFullReport(user.email, latest);
+      if (analysis && !cancelled) {
+        updateAnalysisData({ ...analysis, status: "Analyzed" });
       }
     };
 
     const local = getHistory(user.email);
 
-    if (local.some((entry) => entry?.analysis)) {
+    if (local.length) {
       open(local);
-      return undefined;
+      return () => {
+        cancelled = true;
+      };
     }
 
     setLoadingLatest(true);

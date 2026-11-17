@@ -14,7 +14,9 @@ import {
 import {
   clearHistory,
   deleteHistoryEntry,
+  getFullReport,
   getHistory,
+  historyOffline,
   syncHistory,
   timeAgo
 } from "../services/historyService";
@@ -51,13 +53,18 @@ function Account() {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(user?.name || "");
   const [confirmClear, setConfirmClear] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const [opening, setOpening] = useState(null);
 
   // Bring in this account's saved history from the backend.
   useEffect(() => {
     if (!user) return undefined;
     let cancelled = false;
     syncHistory(user.email).then((merged) => {
-      if (!cancelled) setHistory(merged);
+      if (!cancelled) {
+        setHistory(merged);
+        setOffline(historyOffline());
+      }
     });
     return () => {
       cancelled = true;
@@ -72,7 +79,10 @@ function Account() {
     const refresh = () => {
       if (document.visibilityState === "hidden") return;
       setHistory(getHistory(user.email));
-      syncHistory(user.email).then(setHistory);
+      syncHistory(user.email).then((merged) => {
+        setHistory(merged);
+        setOffline(historyOffline());
+      });
     };
 
     window.addEventListener("focus", refresh);
@@ -108,15 +118,22 @@ function Account() {
   const initial = displayName.trim().charAt(0).toUpperCase();
   const provider = user?.provider === "google" ? "Google" : "Email and password";
 
-  const openReport = (entry) => {
-    // A very old entry whose full report did not fit in the browser:
-    // ask again (a saved report opens instantly).
-    if (!entry.analysis) {
+  const openReport = async (entry) => {
+    setOpening(entry.id);
+
+    // The report is in this browser for the newest searches; older ones
+    // are fetched from the backend.
+    const analysis = await getFullReport(user.email, entry);
+
+    setOpening(null);
+
+    if (!analysis) {
+      // Not available anywhere: ask again (a saved report opens instantly).
       runAgain(entry);
       return;
     }
 
-    updateAnalysisData({ ...entry.analysis, status: "Analyzed" });
+    updateAnalysisData({ ...analysis, status: "Analyzed" });
     navigate("/dashboard");
   };
 
@@ -267,6 +284,14 @@ function Account() {
                 ))}
             </div>
 
+            {offline && (
+              <div className="rc-notice">
+                The server could not be reached, so this list only shows what
+                this browser remembers. Start the backend and refresh to see
+                your full history.
+              </div>
+            )}
+
             {history.length === 0 ? (
               <div className="rc-notice">
                 No analyses yet. Run one and it will appear here.
@@ -311,8 +336,13 @@ function Account() {
                     </span>
 
                     <div className="ac-item-actions">
-                      <button type="button" className="rc-button" onClick={() => openReport(entry)}>
-                        Open
+                      <button
+                        type="button"
+                        className="rc-button"
+                        disabled={opening === entry.id}
+                        onClick={() => openReport(entry)}
+                      >
+                        {opening === entry.id ? "Opening…" : "Open"}
                       </button>
                       <button type="button" className="rc-button" onClick={() => runAgain(entry)}>
                         Run again

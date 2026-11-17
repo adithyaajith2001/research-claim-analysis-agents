@@ -950,7 +950,7 @@ def get_job(job_id: str):
 
 HISTORY_FILE = os.path.join(BACKEND_DIR, "data", "history.json")
 HISTORY_LOCK = threading.Lock()
-HISTORY_MAX = 30
+HISTORY_MAX = 100
 
 
 def _history_email(email: str) -> str:
@@ -983,12 +983,30 @@ class HistoryEntryRequest(BaseModel):
 
 
 @app.get("/api/history")
-def get_history(email: str):
+def get_history(email: str, id: str = ""):
+    """
+    Without `id`: the account's list, newest first, WITHOUT the full
+    reports (they are large). With `id`: that one entry, full report included.
+    """
     key = _history_email(email)
     if not key:
         raise HTTPException(status_code=400, detail="email is required")
+
     with HISTORY_LOCK:
-        return {"entries": _history_read().get(key, [])}
+        entries = _history_read().get(key, [])
+
+    if id:
+        for entry in entries:
+            if entry.get("id") == id:
+                return {"entry": entry}
+        raise HTTPException(status_code=404, detail="History entry not found.")
+
+    return {
+        "entries": [
+            {name: value for name, value in entry.items() if name != "analysis"}
+            for entry in entries
+        ]
+    }
 
 
 @app.post("/api/history")
