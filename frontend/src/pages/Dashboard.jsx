@@ -25,6 +25,7 @@ import { getSession } from "../services/authService";
 import { getFullReport, getHistory, syncHistory } from "../services/historyService";
 
 import "../styles/report.css";
+import "../styles/reportView.css";
 
 
 // ============================================================
@@ -40,11 +41,48 @@ function Badge({ tone, children }) {
 // CONFIDENCE RING
 // ============================================================
 
+function CountUp({ value, duration = 700 }) {
+  const target = Number(value) || 0;
+  const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    const calm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    if (calm) {
+      setShown(target);
+      return undefined;
+    }
+
+    let frame;
+    const start = performance.now();
+
+    const tick = (now) => {
+      const t = Math.min((now - start) / duration, 1);
+      setShown(Math.round(target * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target, duration]);
+
+  return <>{shown}</>;
+}
+
 function ConfidenceRing({ score, tone }) {
   const numeric = Math.min(Math.max(Number(score) || 0, 0), 10);
   const radius = 62;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference * (1 - numeric / 10);
+
+  // Start empty and fill to the score, so the ring draws itself on arrival.
+  const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(numeric));
+    return () => cancelAnimationFrame(id);
+  }, [numeric]);
+
+  const offset = circumference * (1 - shown / 10);
 
   return (
     <div className="rc-ring" role="img" aria-label={`Confidence ${formatScore(numeric)} out of 10`}>
@@ -204,6 +242,100 @@ function Dashboard() {
     return counts;
   }, [claims]);
 
+  // ----------------------------------------------------------
+  // Page state: tabs, filters, paper drawer
+  // ----------------------------------------------------------
+
+  const TAB_IDS = ["claims", "compare", "score", "leftout"];
+
+  const [tab, setTab] = useState(() => {
+    const fromHash = window.location.hash.replace("#", "");
+    return TAB_IDS.includes(fromHash) ? fromHash : "claims";
+  });
+  const [verdictFilter, setVerdictFilter] = useState("all");
+  const [paperFilter, setPaperFilter] = useState(null);
+  const [drawerPaper, setDrawerPaper] = useState(null);
+
+  const changeTab = (id) => {
+    setTab(id);
+    try {
+      window.history.replaceState(window.history.state, "", `#${id}`);
+    } catch {
+      /* the address bar is only a convenience */
+    }
+  };
+
+  // Which claims came from which paper.
+  const claimsOfPaper = (paper) =>
+    claims.filter(
+      (claim) =>
+        (claim.paper_id != null &&
+          paper.id != null &&
+          String(claim.paper_id) === String(paper.id)) ||
+        (claim.paper_title && claim.paper_title === paper.title)
+    );
+
+  // Papers that gave a claim come first.
+  const papersView = papers
+    .map((paper, index) => ({
+      paper,
+      index,
+      paperClaims: claimsOfPaper(paper)
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.paperClaims.length > 0) - Number(a.paperClaims.length > 0) ||
+        a.index - b.index
+    );
+
+  const inComparison = (paperClaims) =>
+    paperClaims.some((claim) =>
+      comparisons.some(
+        (item) =>
+          String(item.claim_a_id) === String(claim.claim_id) ||
+          String(item.claim_b_id) === String(claim.claim_id)
+      )
+    );
+
+  const visibleClaims = sortedClaims.filter((claim) => {
+    if (verdictFilter !== "all" && claimVerdict(claim).tone !== verdictFilter) {
+      return false;
+    }
+    if (paperFilter) {
+      const owner = papers.find((p) => (p.id ?? null) === paperFilter.id && p.title === paperFilter.title);
+      if (owner && !claimsOfPaper(owner).includes(claim)) return false;
+    }
+    return true;
+  });
+
+  // Close the drawer with Escape and stop the page behind it from scrolling.
+  useEffect(() => {
+    if (!drawerPaper) return undefined;
+
+    const onKey = (event) => {
+      if (event.key === "Escape") setDrawerPaper(null);
+    };
+
+    document.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [drawerPaper]);
+
+  const onTabKey = (event, visibleTabs) => {
+    const keys = ["ArrowRight", "ArrowLeft"];
+    if (!keys.includes(event.key)) return;
+    const at = visibleTabs.findIndex((t) => t.id === tab);
+    const next = event.key === "ArrowRight" ? at + 1 : at - 1;
+    const target = visibleTabs[(next + visibleTabs.length) % visibleTabs.length];
+    changeTab(target.id);
+    requestAnimationFrame(() => document.getElementById(`tab-${target.id}`)?.focus());
+  };
+
   const downloadReport = () => {
     downloadReportPdf(analysisData);
   };
@@ -285,15 +417,44 @@ function Dashboard() {
   // Report
   // ----------------------------------------------------------
 
+  const tabs = [
+    { id: "claims", label: "Claims", count: claims.length },
+    { id: "compare", label: "Cross-paper comparisons", count: comparisons.length },
+    ...(claims.length > 0 ? [{ id: "score", label: "How the score was built" }] : []),
+    ...(skippedClaims.length > 0
+      ? [{ id: "leftout", label: "Results left out", count: skippedClaims.length }]
+      : [])
+  ];
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : "claims";
+
+  const verdictOptions = [
+    { id: "all", label: "All", count: claims.length },
+    { id: "high", label: "Found in paper", count: verdictCounts.high },
+    { id: "medium", label: "Weak match", count: verdictCounts.medium },
+    { id: "low", label: "Not found", count: verdictCounts.low }
+  ];
+
+  const openPaperFilter = (paper) => {
+    setPaperFilter({ id: paper.id ?? null, title: paper.title });
+    setVerdictFilter("all");
+    setDrawerPaper(null);
+    changeTab("claims");
+    requestAnimationFrame(() =>
+      document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth", block: "start" })
+    );
+  };
+
+  const drawerClaims = drawerPaper ? claimsOfPaper(drawerPaper) : [];
+
   return (
     <>
       <Navbar />
 
-      <main className="rc-page">
-        <div className="rc-container">
+      <main className="rc-page db-page">
+        <div className="db-wrap">
 
           {/* ---------- HEADER ---------- */}
-          <header className="rc-header">
+          <header className="rc-header db-rise">
             <div>
               <p className="rc-eyebrow">Analysis report</p>
               <h1>{topic}</h1>
@@ -336,9 +497,9 @@ function Dashboard() {
 
 
           {/* ---------- SUMMARY ---------- */}
-          <section className="rc-card rc-summary">
-            <div className="rc-summary-text">
-              <Badge tone={info.tone}>{info.label}</Badge>
+          <section className="db-hero">
+            <div className="rc-card db-verdict db-rise" style={{ "--i": 1 }}>
+              <div><Badge tone={info.tone}>{info.label}</Badge></div>
               <h2>{info.headline}</h2>
               <p>{info.text}</p>
 
@@ -348,179 +509,276 @@ function Dashboard() {
                   <p className="rc-single-source">{SINGLE_SOURCE_NOTE}</p>
                 )}
 
-              <ul className="rc-summary-facts">
-                <li>
+              <div className="db-chips">
+                <span className="db-chip">
                   <strong>{verdictCounts.high}</strong> found in the paper's text
-                </li>
-                <li>
+                </span>
+                <span className="db-chip">
                   <strong>{verdictCounts.medium}</strong> weak match
-                </li>
-                <li>
+                </span>
+                <span className="db-chip">
                   <strong>{verdictCounts.low}</strong> not found
-                </li>
-              </ul>
+                </span>
+              </div>
             </div>
 
-            {claims.length > 0 && (
-              <ConfidenceRing score={score} tone={info.tone} />
-            )}
+            <div className="rc-card db-gauge db-rise" style={{ "--i": 2 }}>
+              {claims.length > 0 && (
+                <ConfidenceRing score={score} tone={info.tone} />
+              )}
+
+              <div className="db-mini" aria-label="Key numbers">
+                <div>
+                  <strong><CountUp value={papers.length} /></strong>
+                  <span>{papers.length === 1 ? "Paper" : "Papers"} analysed</span>
+                </div>
+                <div>
+                  <strong><CountUp value={claims.length} /></strong>
+                  <span>Claims extracted</span>
+                </div>
+                <div>
+                  <strong><CountUp value={comparisons.length} /></strong>
+                  <span>Cross-paper comparisons</span>
+                </div>
+                <div>
+                  <strong>{formatSeconds(analysisData?.analysisSeconds)}</strong>
+                  <span>Analysis time</span>
+                </div>
+              </div>
+            </div>
           </section>
 
 
-          {/* ---------- STAT TILES ---------- */}
-          <section className="rc-stats" aria-label="Key numbers">
-            <div className="rc-card rc-stat">
-              <strong>{papers.length}</strong>
-              <span>{papers.length === 1 ? "Paper" : "Papers"} analysed</span>
+          {/* ---------- PAPERS (up front) ---------- */}
+          <section id="papers" aria-labelledby="papers-title">
+            <div className="db-section-head">
+              <div>
+                <h2 id="papers-title">Papers analysed</h2>
+                <p>
+                  The sources behind this report. Select a paper to read its
+                  abstract and see the claims taken from it.
+                </p>
+              </div>
+              {papers.length > 3 && (
+                <span className="db-rail-hint">Scroll sideways for more →</span>
+              )}
             </div>
-            <div className="rc-card rc-stat">
-              <strong>{claims.length}</strong>
-              <span>Claims extracted</span>
-            </div>
-            <div className="rc-card rc-stat">
-              <strong>{comparisons.length}</strong>
-              <span>Cross-paper comparisons</span>
-            </div>
-            <div className="rc-card rc-stat">
-              <strong>{formatSeconds(analysisData?.analysisSeconds)}</strong>
-              <span>Analysis time</span>
-            </div>
-          </section>
 
-
-          {/* ---------- SCORE BREAKDOWN ---------- */}
-          {claims.length > 0 && (
-          <section className="rc-card">
-            <h2 className="rc-section-title">How the score was built</h2>
-            <p className="rc-section-note">
-              Four checks are combined into the overall score. Stronger
-              signals count for more.
-            </p>
-
-            <div className="rc-bars">
-              {SCORE_WEIGHTS.map((item) => {
-                const value = Number(breakdown[item.key]);
-                const tone = scoreTone(value);
-                const width = Number.isFinite(value)
-                  ? Math.min(Math.max(value, 0), 10) * 10
-                  : 0;
+            <div className="db-rail">
+              {papersView.map(({ paper, index, paperClaims }, position) => {
+                const count = paperClaims.length;
+                const active =
+                  paperFilter &&
+                  paperFilter.title === paper.title &&
+                  paperFilter.id === (paper.id ?? null);
 
                 return (
-                  <div className="rc-bar-row" key={item.key}>
-                    <div className="rc-bar-head">
-                      <span className="rc-bar-label">
-                        {item.label}
-                        <small>counts for {item.weight}%</small>
+                  <button
+                    type="button"
+                    key={paper.id ?? index}
+                    className={
+                      "db-paper db-rise" +
+                      (count === 0 ? " is-muted" : "") +
+                      (active ? " is-filter" : "")
+                    }
+                    style={{ "--i": position + 3 }}
+                    onClick={() => setDrawerPaper(paper)}
+                    aria-label={`Open details for ${paper.title}`}
+                  >
+                    <span className="db-paper-top">
+                      <span className="db-src">{paper.source || "Paper"}</span>
+                      <span>{paper.year || ""}</span>
+                    </span>
+                    <h3>{paper.title}</h3>
+                    <p className="db-paper-authors">{shortAuthors(paper.authors)}</p>
+                    <span className="db-paper-foot">
+                      <span className={count > 0 ? "db-pill on" : "db-pill"}>
+                        {count} {count === 1 ? "claim" : "claims"}
                       </span>
-                      <strong>{formatScore(value)} / 10</strong>
-                    </div>
-
-                    <div className="rc-bar-track">
-                      <div
-                        className={`rc-bar-fill rc-fill-${tone}`}
-                        style={{ width: `${width}%` }}
-                      />
-                    </div>
-
-                    <p className="rc-bar-help">
-                      {item.key === "Contradiction" && comparisons.length === 0
-                        ? "No other paper reported a comparable result, so this check is neutral (5/10)."
-                        : item.help}
-                    </p>
-                  </div>
+                      {inComparison(paperClaims) && (
+                        <span className="db-pill link">in a comparison</span>
+                      )}
+                      <span className="db-open">Details ›</span>
+                    </span>
+                  </button>
                 );
               })}
             </div>
           </section>
-          )}
 
 
-          {/* ---------- CLAIMS ---------- */}
-          <section className="rc-card">
-            <h2 className="rc-section-title">Claims found</h2>
-            <p className="rc-section-note">
-              Each result a paper reports, checked against the paper's own
-              text. Select a row to see the reasoning and source text.
-            </p>
-            {claims.some(isSubsetClaim) && (
-              <p className="rc-notice rc-subset-note">{SUBSET_NOTE}</p>
-            )}
-            {skippedOther > 0 && (
-              <p className="rc-section-note">
-                Showing only results{modelLabel ? ` for ${modelLabel}` : ""} that match your question.{" "}
-                {skippedOther} claim{skippedOther === 1 ? "" : "s"} about other
-                models or benchmarks {skippedOther === 1 ? "was" : "were"} left out.
-              </p>
-            )}
+          {/* ---------- WORKSPACE (tabs) ---------- */}
+          <section className="db-workspace" id="workspace">
+            <div
+              className="db-tabs"
+              role="tablist"
+              aria-label="Report sections"
+              onKeyDown={(event) => onTabKey(event, tabs)}
+            >
+              {tabs.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="tab"
+                  id={`tab-${item.id}`}
+                  aria-selected={activeTab === item.id}
+                  aria-controls={`panel-${item.id}`}
+                  tabIndex={activeTab === item.id ? 0 : -1}
+                  className="db-tab"
+                  onClick={() => changeTab(item.id)}
+                >
+                  {item.label}
+                  {item.count !== undefined && <small>{item.count}</small>}
+                </button>
+              ))}
+            </div>
 
-            {claims.length === 0 ? (
-              <div className="rc-notice">
-                {modelLabel
-                  ? `No claims about ${modelLabel} were found in the retrieved papers.`
-                  : "No numeric benchmark claims could be extracted from these papers."}
-                {" "}Try a more specific question, for example
-                “MMLU accuracy of GPT-4”.
-              </div>
-            ) : (
-              <div className="rc-table-wrap">
-                <table className="rc-table">
-                  <thead>
-                    <tr>
-                      <th>Claim</th>
-                      <th>Result</th>
-                      <th>Evidence strength</th>
-                      <th>Verdict</th>
-                    </tr>
-                  </thead>
 
-                  <tbody>
-                    {sortedClaims.map((claim, index) => {
-                      const id = claim.claim_id ?? index;
-                      const isOpen = openClaim === id;
-                      const verdict = claimVerdict(claim);
-                      const source = claimSourceText(claim);
+            {/* ----- CLAIMS ----- */}
+            {activeTab === "claims" && (
+              <div
+                className="db-panel"
+                role="tabpanel"
+                id="panel-claims"
+                aria-labelledby="tab-claims"
+                key="claims"
+              >
+                <h2 className="rc-section-title">Claims found</h2>
+                <p className="rc-section-note">
+                  Each result a paper reports, checked against the paper's own
+                  text. Select a claim to see the reasoning and source text.
+                </p>
+                {claims.some(isSubsetClaim) && (
+                  <p className="rc-notice rc-subset-note">{SUBSET_NOTE}</p>
+                )}
+                {skippedOther > 0 && (
+                  <p className="rc-section-note">
+                    Showing only results{modelLabel ? ` for ${modelLabel}` : ""} that match your question.{" "}
+                    {skippedOther} claim{skippedOther === 1 ? "" : "s"} about other
+                    models or benchmarks {skippedOther === 1 ? "was" : "were"} left out.
+                  </p>
+                )}
 
-                      return (
-                        <Fragment key={`claim-${id}`}>
-                          <tr
-                            className={isOpen ? "rc-row rc-row-open" : "rc-row"}
-                          >
-                            <td>
+                {claims.length === 0 ? (
+                  <>
+                    <div className="rc-notice">
+                      {modelLabel
+                        ? `No claims about ${modelLabel} were found in the retrieved papers.`
+                        : "No numeric benchmark claims could be extracted from these papers."}
+                      {" "}Try a more specific question, for example
+                      “MMLU accuracy of GPT-4”.
+                    </div>
+
+                    {closestMatches.length > 0 && (
+                      <>
+                        <h2 className="rc-section-title">Closest matches</h2>
+                        <p className="rc-section-note">
+                          No result for the exact benchmark you asked about was found,
+                          but the papers report {modelLabel || "this model"} on other
+                          benchmarks. These are shown for context only. They are
+                          different tests, so they are not scored and should not be
+                          read as your answer.
+                        </p>
+                        <ul className="db-skipped">
+                          {closestMatches.map((item, index) => (
+                            <li key={index}>
+                              <strong>{item.model_name || "Unknown model"}</strong>
+                              {" · "}
+                              {item.benchmark || "Unknown benchmark"}
+                              {" · "}
+                              {item.reported_value}
+                              <small>{item.paper_title}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="db-filters" role="group" aria-label="Filter claims">
+                      {verdictOptions.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          className="db-filter"
+                          aria-pressed={verdictFilter === option.id}
+                          onClick={() => setVerdictFilter(option.id)}
+                        >
+                          {option.label} ({option.count})
+                        </button>
+                      ))}
+                      {paperFilter && (
+                        <button
+                          type="button"
+                          className="db-filter db-filter-paper"
+                          aria-pressed="true"
+                          onClick={() => setPaperFilter(null)}
+                          title="Show claims from every paper again"
+                        >
+                          Paper: {paperFilter.title.length > 36
+                            ? `${paperFilter.title.slice(0, 36)}…`
+                            : paperFilter.title} ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {visibleClaims.length === 0 ? (
+                      <div className="rc-notice">
+                        No claims match these filters.
+                      </div>
+                    ) : (
+                      <ul className="db-claims">
+                        {visibleClaims.map((claim, index) => {
+                          const id = claim.claim_id ?? index;
+                          const isOpen = openClaim === id;
+                          const verdict = claimVerdict(claim);
+                          const source = claimSourceText(claim);
+                          const owner = papers.find(
+                            (p) =>
+                              (claim.paper_id != null &&
+                                p.id != null &&
+                                String(claim.paper_id) === String(p.id)) ||
+                              p.title === claim.paper_title
+                          );
+
+                          return (
+                            <li
+                              key={`claim-${id}`}
+                              className={isOpen ? "db-claim is-open" : "db-claim"}
+                            >
                               <button
                                 type="button"
-                                className="rc-row-button"
+                                className="db-claim-main"
                                 aria-expanded={isOpen}
                                 onClick={() => setOpenClaim(isOpen ? null : id)}
                               >
-                                <span className="rc-claim-text">{claim.claim}</span>
-                                <span className="rc-claim-tags">
-                                  {claim.model_name && (
-                                    <span className="rc-tag">{claim.model_name}</span>
-                                  )}
-                                  {isSubsetClaim(claim) && (
-                                    <span className="rc-tag rc-tag-warn">Part of benchmark</span>
-                                  )}
-                                  {claim.benchmark && (
-                                    <span className="rc-tag">{claim.benchmark}</span>
-                                  )}
+                                <span>
+                                  <span className="db-claim-text">{claim.claim}</span>
+                                  <span className="rc-claim-tags">
+                                    {claim.model_name && (
+                                      <span className="rc-tag">{claim.model_name}</span>
+                                    )}
+                                    {isSubsetClaim(claim) && (
+                                      <span className="rc-tag rc-tag-warn">Part of benchmark</span>
+                                    )}
+                                    {claim.benchmark && (
+                                      <span className="rc-tag">{claim.benchmark}</span>
+                                    )}
+                                  </span>
                                 </span>
+                                <span className="db-claim-value">{formatValue(claim)}</span>
+                                <span className="db-claim-badges">
+                                  <Badge tone={scoreTone(claim.evidence_strength_score)}>
+                                    {formatScore(claim.evidence_strength_score)} / 10
+                                  </Badge>
+                                  <Badge tone={verdict.tone}>{verdict.label}</Badge>
+                                </span>
+                                <span className="db-chev" aria-hidden="true">▾</span>
                               </button>
-                            </td>
-                            <td className="rc-num">{formatValue(claim)}</td>
-                            <td>
-                              <Badge tone={scoreTone(claim.evidence_strength_score)}>
-                                {formatScore(claim.evidence_strength_score)} / 10
-                              </Badge>
-                            </td>
-                            <td>
-                              <Badge tone={verdict.tone}>{verdict.label}</Badge>
-                            </td>
-                          </tr>
 
-                          {isOpen && (
-                            <tr className="rc-detail-row">
-                              <td colSpan={4}>
-                                <div className="rc-detail">
+                              {isOpen && (
+                                <div className="db-claim-detail">
                                   <p>
                                     <strong>Paper:</strong> {claim.paper_title}
                                   </p>
@@ -532,69 +790,208 @@ function Dashboard() {
                                     </p>
                                   )}
 
-                                  {source && (
-                                    <blockquote>{source}</blockquote>
-                                  )}
+                                  {source && <blockquote>{source}</blockquote>}
 
-                                  <p className="rc-detail-scores">
+                                  <p>
                                     Verification {formatScore(claim.verification_score)} / 10
                                     {" · "}
                                     Skeptic {formatScore(claim.skeptic_score)} / 10
                                   </p>
+
+                                  {owner && (
+                                    <button
+                                      type="button"
+                                      className="db-linkbtn"
+                                      onClick={() => setDrawerPaper(owner)}
+                                    >
+                                      Read this paper's details ›
+                                    </button>
+                                  )}
                                 </div>
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </>
+                )}
               </div>
             )}
-          </section>
 
 
-          {/* ---------- CLOSEST MATCHES ---------- */}
-          {closestMatches.length > 0 && (
-            <section className="rc-card">
-              <h2 className="rc-section-title">Closest matches</h2>
-              <p className="rc-section-note">
-                No result for the exact benchmark you asked about was found,
-                but the papers report {modelLabel || "this model"} on other
-                benchmarks. These are shown for context only. They are
-                different tests, so they are not scored and should not be
-                read as your answer.
-              </p>
-              <ul className="rc-skipped">
-                {closestMatches.map((item, index) => (
-                  <li key={index}>
-                    <strong>{item.model_name || "Unknown model"}</strong>
-                    {" · "}
-                    {item.benchmark || "Unknown benchmark"}
-                    {" · "}
-                    {item.reported_value}
-                    <small>{item.paper_title}</small>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+            {/* ----- COMPARISONS ----- */}
+            {activeTab === "compare" && (
+              <div
+                className="db-panel"
+                role="tabpanel"
+                id="panel-compare"
+                aria-labelledby="tab-compare"
+                key="compare"
+              >
+                <h2 className="rc-section-title">Cross-paper comparisons</h2>
+                <p className="rc-section-note">
+                  Results are only compared when two papers report the same
+                  model on the same benchmark and setting.
+                </p>
+
+                {comparisons.length === 0 ? (
+                  <div className="rc-notice">
+                    No comparable results were found, so nothing could be
+                    confirmed or contradicted across papers. This is not a
+                    sign that the claims are consistent. Try a query that
+                    covers more papers evaluating the same model.
+                  </div>
+                ) : (
+                  <ul className="db-cmps">
+                    {comparisons.map((item, index) => {
+                      const agrees = item.relation_type === "Agrees";
+                      const tone = agrees
+                        ? "high"
+                        : item.severity === "High"
+                        ? "low"
+                        : "medium";
+                      const a = Number(item.reported_value_a);
+                      const b = Number(item.reported_value_b);
+                      const scale = Math.max(100, a || 0, b || 0);
+
+                      return (
+                        <li className="db-cmp db-rise" style={{ "--i": index }} key={index}>
+                          <div className="db-cmp-head">
+                            <div>
+                              <span className="db-cmp-title">
+                                {item.model_label || item.model_name || "Same model"}
+                              </span>
+                              <span className="rc-claim-tags">
+                                <span className="rc-tag">{item.benchmark_name}</span>
+                                {item.evaluation_setting && (
+                                  <span className="rc-tag">{item.evaluation_setting}</span>
+                                )}
+                                {item.setting_note && (
+                                  <span className="rc-tag" title={item.setting_note}>
+                                    setting not stated in one paper
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            <Badge tone={tone}>
+                              {agrees
+                                ? "Agrees"
+                                : `Contradicts${item.severity ? ` (${item.severity})` : ""}`}
+                            </Badge>
+                          </div>
+
+                          <div className="db-cmp-rows">
+                            {[
+                              [paperOf(item.claim_a_id) || "Paper A", item.reported_value_a, a],
+                              [paperOf(item.claim_b_id) || "Paper B", item.reported_value_b, b]
+                            ].map(([name, shownValue, numeric], row) => (
+                              <div className="db-cmp-row" key={row}>
+                                <span className="db-cmp-name">{name}</span>
+                                <strong>{shownValue}</strong>
+                                <div className="db-track">
+                                  <span style={{ width: `${Math.min((numeric / scale) * 100, 100)}%` }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <p className="db-cmp-note">
+                            Gap: <span className="db-gap">{item.value_diff}</span> points.{" "}
+                            {agrees
+                              ? "Within 3 points counts as agreeing."
+                              : "More than 3 points apart counts as contradicting."}
+                          </p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
 
 
-          {/* ---------- LEFT OUT ---------- */}
-          {skippedClaims.length > 0 && (
-            <section className="rc-card">
-              <details className="rc-details">
-                <summary>
-                  Results left out ({skippedClaims.length})
-                </summary>
+            {/* ----- SCORE ----- */}
+            {activeTab === "score" && claims.length > 0 && (
+              <div
+                className="db-panel"
+                role="tabpanel"
+                id="panel-score"
+                aria-labelledby="tab-score"
+                key="score"
+              >
+                <h2 className="rc-section-title">How the score was built</h2>
+                <p className="rc-section-note">
+                  Four checks are combined into the overall score. Stronger
+                  signals count for more.
+                </p>
+
+                <div className="db-formula" aria-label="Score formula">
+                  {SCORE_WEIGHTS.map((item, i) => (
+                    <span key={item.key}>
+                      {i > 0 && "+ "}
+                      {item.weight}% × <b>{formatScore(Number(breakdown[item.key]))}</b>
+                    </span>
+                  ))}
+                  <span className="db-eq">= <b>{formatScore(score)}</b> / 10</span>
+                </div>
+
+                <div className="rc-card">
+                  <div className="rc-bars">
+                    {SCORE_WEIGHTS.map((item) => {
+                      const value = Number(breakdown[item.key]);
+                      const barTone = scoreTone(value);
+                      const width = Number.isFinite(value)
+                        ? Math.min(Math.max(value, 0), 10) * 10
+                        : 0;
+
+                      return (
+                        <div className="rc-bar-row" key={item.key}>
+                          <div className="rc-bar-head">
+                            <span className="rc-bar-label">
+                              {item.label}
+                              <small>counts for {item.weight}%</small>
+                            </span>
+                            <strong>{formatScore(value)} / 10</strong>
+                          </div>
+
+                          <div className="rc-bar-track">
+                            <div
+                              className={`rc-bar-fill rc-fill-${barTone}`}
+                              style={{ width: `${width}%` }}
+                            />
+                          </div>
+
+                          <p className="rc-bar-help">
+                            {item.key === "Contradiction" && comparisons.length === 0
+                              ? "No other paper reported a comparable result, so this check is neutral (5/10)."
+                              : item.help}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+
+            {/* ----- LEFT OUT ----- */}
+            {activeTab === "leftout" && skippedClaims.length > 0 && (
+              <div
+                className="db-panel"
+                role="tabpanel"
+                id="panel-leftout"
+                aria-labelledby="tab-leftout"
+                key="leftout"
+              >
+                <h2 className="rc-section-title">Results left out ({skippedClaims.length})</h2>
                 <p className="rc-section-note">
                   These were found in the papers but are about other models
                   or other benchmarks than your question, so they are not
                   scored.
                 </p>
-                <ul className="rc-skipped">
+                <ul className="db-skipped">
                   {skippedClaims.map((item, index) => (
                     <li key={index}>
                       <strong>{item.model_name || "Unknown model"}</strong>
@@ -606,153 +1003,105 @@ function Dashboard() {
                     </li>
                   ))}
                 </ul>
-              </details>
-            </section>
-          )}
-
-
-          {/* ---------- COMPARISONS ---------- */}
-          <section className="rc-card">
-            <h2 className="rc-section-title">Cross-paper comparisons</h2>
-            <p className="rc-section-note">
-              Results are only compared when two papers report the same
-              model on the same benchmark and setting.
-            </p>
-
-            {comparisons.length === 0 ? (
-              <div className="rc-notice">
-                No comparable results were found, so nothing could be
-                confirmed or contradicted across papers. This is not a
-                sign that the claims are consistent. Try a query that
-                covers more papers evaluating the same model.
-              </div>
-            ) : (
-              <div className="rc-table-wrap">
-                <table className="rc-table">
-                  <thead>
-                    <tr>
-                      <th>Model and benchmark</th>
-                      <th>Papers compared (value reported)</th>
-                      <th>Gap</th>
-                      <th>Verdict</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {comparisons.map((item, index) => {
-                      const agrees = item.relation_type === "Agrees";
-                      const tone = agrees
-                        ? "high"
-                        : item.severity === "High"
-                        ? "low"
-                        : "medium";
-
-                      return (
-                        <tr key={index}>
-                          <td>
-                            <span className="rc-claim-text">
-                              {item.model_label || item.model_name || "Same model"}
-                            </span>
-                            <span className="rc-claim-tags">
-                              <span className="rc-tag">{item.benchmark_name}</span>
-                              {item.evaluation_setting && (
-                                <span className="rc-tag">{item.evaluation_setting}</span>
-                              )}
-                              {item.setting_note && (
-                                <span className="rc-tag" title={item.setting_note}>
-                                  setting not stated in one paper
-                                </span>
-                              )}
-                            </span>
-                          </td>
-                          <td>
-                            <ul className="rc-compared">
-                              <li>
-                                <span className="rc-compared-name">
-                                  {paperOf(item.claim_a_id) || "Paper A"}
-                                </span>
-                                <strong className="rc-compared-value">{item.reported_value_a}</strong>
-                              </li>
-                              <li>
-                                <span className="rc-compared-name">
-                                  {paperOf(item.claim_b_id) || "Paper B"}
-                                </span>
-                                <strong className="rc-compared-value">{item.reported_value_b}</strong>
-                              </li>
-                            </ul>
-                          </td>
-                          <td className="rc-num">{item.value_diff}</td>
-                          <td>
-                            <Badge tone={tone}>
-                              {agrees
-                                ? "Agrees"
-                                : `Contradicts${item.severity ? ` (${item.severity})` : ""}`}
-                            </Badge>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
               </div>
             )}
           </section>
 
-
-          {/* ---------- SOURCES ---------- */}
-          <section className="rc-card">
-            <h2 className="rc-section-title">Papers analysed</h2>
-            <p className="rc-section-note">
-              The sources behind this report.
-            </p>
-
-            <ul className="rc-papers">
-              {papers.map((paper, index) => {
-                const id = paper.id ?? index;
-                const isOpen = openPaper === id;
-                const abstract = paper.abstract || "";
-                const link = paper.url || paper.pdf_url;
-
-                return (
-                  <li className="rc-paper" key={id}>
-                    <h3>
-                      {link ? (
-                        <a href={link} target="_blank" rel="noreferrer">
-                          {paper.title}
-                        </a>
-                      ) : (
-                        paper.title
-                      )}
-                    </h3>
-
-                    <p className="rc-paper-meta">
-                      {[shortAuthors(paper.authors), paper.year, paper.source]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-
-                    {abstract && (
-                      <>
-                        <p className={isOpen ? "rc-abstract" : "rc-abstract rc-clamp"}>
-                          {abstract}
-                        </p>
-                        <button
-                          type="button"
-                          className="rc-link-button"
-                          onClick={() => setOpenPaper(isOpen ? null : id)}
-                        >
-                          {isOpen ? "Show less" : "Read more"}
-                        </button>
-                      </>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
         </div>
       </main>
+
+
+      {/* ---------- PAPER DRAWER ---------- */}
+      {drawerPaper && (
+        <>
+          <div className="db-overlay" onClick={() => setDrawerPaper(null)} />
+          <aside
+            className="db-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Details for ${drawerPaper.title}`}
+          >
+            <div className="db-drawer-head">
+              <div>
+                <span className="db-src">{drawerPaper.source || "Paper"}</span>
+                <h2>{drawerPaper.title}</h2>
+                <p>
+                  {[shortAuthors(drawerPaper.authors, 6), drawerPaper.year]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="db-close"
+                aria-label="Close paper details"
+                onClick={() => setDrawerPaper(null)}
+                autoFocus
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="db-drawer-body">
+              <div className="db-drawer-actions">
+                {(drawerPaper.url || drawerPaper.pdf_url) && (
+                  <a
+                    className="rc-button rc-button-primary"
+                    href={drawerPaper.url || drawerPaper.pdf_url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open the paper ↗
+                  </a>
+                )}
+                {drawerClaims.length > 0 && (
+                  <button
+                    type="button"
+                    className="rc-button"
+                    onClick={() => openPaperFilter(drawerPaper)}
+                  >
+                    Show only its claims
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <h3>Abstract</h3>
+                <p className="db-abstract">
+                  {drawerPaper.abstract || "No abstract was available for this paper."}
+                </p>
+              </div>
+
+              <div>
+                <h3>Claims taken from this paper ({drawerClaims.length})</h3>
+                {drawerClaims.length === 0 ? (
+                  <p className="rc-section-note" style={{ margin: 0 }}>
+                    No result matching your question was found in this paper.
+                  </p>
+                ) : (
+                  <ul className="db-drawer-claims">
+                    {drawerClaims.map((claim, index) => {
+                      const verdict = claimVerdict(claim);
+                      return (
+                        <li key={claim.claim_id ?? index}>
+                          <span>{claim.claim}</span>
+                          <span className="rc-claim-tags">
+                            <strong>{formatValue(claim)}</strong>
+                            <Badge tone={verdict.tone}>{verdict.label}</Badge>
+                            <Badge tone={scoreTone(claim.evidence_strength_score)}>
+                              {formatScore(claim.evidence_strength_score)} / 10
+                            </Badge>
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
 
       <Footer />
     </>
