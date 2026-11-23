@@ -1,10 +1,14 @@
-import { useState } from "react";
-import { useLocation } from "react-router-dom";
-import { FaSearch, FaLightbulb, FaFlask, FaCheckCircle } from "react-icons/fa";
+import { useContext, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { FaSearch, FaLightbulb, FaFlask, FaCheckCircle, FaFilePdf } from "react-icons/fa";
 
 import Navbar from "../components/layout/Navbar";
 import Footer from "../components/layout/Footer";
 import useStartAnalysis from "../hooks/useStartAnalysis";
+import { AnalysisContext } from "../context/AnalysisContext";
+import { getSession } from "../services/authService";
+import { useAuthPrompt } from "../context/AuthPromptContext";
+import { uploadPaper } from "../services/analysisService";
 
 import "../styles/analysis.css";
 
@@ -30,6 +34,55 @@ const Analysis = () => {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const startAnalysis = useStartAnalysis();
+  const navigate = useNavigate();
+  const { setAnalysisData } = useContext(AnalysisContext);
+  const { openAuthPrompt } = useAuthPrompt();
+  const fileRef = useRef(null);
+  const [uploadName, setUploadName] = useState("");
+
+  // Check one uploaded PDF instead of searching for papers.
+  const handleFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!getSession()) {
+      openAuthPrompt("");
+      return;
+    }
+
+    setError("");
+    setUploadName(file.name);
+    setIsSubmitting(true);
+
+    try {
+      const started = await uploadPaper(file);
+      const label = `Uploaded paper: ${started.title || file.name}`;
+
+      setAnalysisData((previous) => ({
+        ...previous,
+        topic: label,
+        confidence: 0,
+        papers: 0,
+        papers_retrieved: 0,
+        claims: 0,
+        paperList: [],
+        summary: "",
+        status: "Analyzing",
+        supportingPapers: [],
+        contradictingPapers: [],
+        isAnalyzing: true
+      }));
+
+      navigate("/loading", {
+        state: { topic: label, uploadJobId: started.job_id }
+      });
+    } catch (uploadError) {
+      setError(uploadError.message || "The file could not be uploaded.");
+      setUploadName("");
+      setIsSubmitting(false);
+    }
+  };
 
   const handleAnalyze = () => {
     if (!topic.trim()) {
@@ -149,6 +202,34 @@ const Analysis = () => {
               <FaSearch />
               {isSubmitting ? "Starting analysis…" : "Analyze research claim"}
             </button>
+
+            <div className="analysis-upload">
+              <span className="analysis-upload-or">or check your own paper</span>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                className="analysis-sr"
+                id="paper-upload"
+                onChange={handleFile}
+                disabled={isSubmitting}
+              />
+              <button
+                type="button"
+                className="analysis-upload-btn"
+                onClick={() => fileRef.current?.click()}
+                disabled={isSubmitting}
+              >
+                <FaFilePdf />
+                {uploadName && isSubmitting
+                  ? `Uploading ${uploadName}…`
+                  : "Upload a paper (PDF)"}
+              </button>
+              <small>
+                We read the results reported in the paper and check each number
+                against its own text. PDFs with selectable text only, up to 25 MB.
+              </small>
+            </div>
 
             <p className="analysis-note">
               Results are a research aid. Always confirm important numbers in

@@ -128,6 +128,10 @@ function Account() {
     setOpening(null);
 
     if (!analysis) {
+      if (String(entry.topic || "").startsWith("Uploaded paper:")) {
+        navigate("/analysis");
+        return;
+      }
       // Not available anywhere: ask again (a saved report opens instantly).
       runAgain(entry);
       return;
@@ -344,9 +348,11 @@ function Account() {
                       >
                         {opening === entry.id ? "Opening…" : "Open"}
                       </button>
-                      <button type="button" className="rc-button" onClick={() => runAgain(entry)}>
-                        Run again
-                      </button>
+                      {!String(entry.topic || "").startsWith("Uploaded paper:") && (
+                        <button type="button" className="rc-button" onClick={() => runAgain(entry)}>
+                          Run again
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="rc-button"

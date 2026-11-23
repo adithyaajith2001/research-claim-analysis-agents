@@ -90,29 +90,36 @@ export async function analyzeTopic(
   refresh = false,
   options = {}
 ) {
-  const { restart = false, onJobId } = options;
+  const { restart = false, onJobId, existingJobId } = options;
   const trimmedQuery = String(query || "").trim();
 
   if (!trimmedQuery) {
     throw new Error("Research query cannot be empty.");
   }
 
-  let jobId;
+  let jobId = existingJobId || null;
 
-  try {
-    const start = await axios.post(
-      `${API_BASE_URL}/api/jobs`,
-      { query: trimmedQuery, max_results: maxResults, refresh, restart },
-      { headers: { "Content-Type": "application/json" }, timeout: 30000 }
-    );
-
-    jobId = start.data.job_id;
-
+  if (jobId) {
+    // Already started (an uploaded paper): just follow it.
     if (typeof onJobId === "function") {
       onJobId(jobId);
     }
-  } catch (error) {
-    throw friendlyError(error);
+  } else {
+    try {
+      const start = await axios.post(
+        `${API_BASE_URL}/api/jobs`,
+        { query: trimmedQuery, max_results: maxResults, refresh, restart },
+        { headers: { "Content-Type": "application/json" }, timeout: 30000 }
+      );
+
+      jobId = start.data.job_id;
+
+      if (typeof onJobId === "function") {
+        onJobId(jobId);
+      }
+    } catch (error) {
+      throw friendlyError(error);
+    }
   }
 
   const startedAt = Date.now();
@@ -187,5 +194,41 @@ export async function cancelAnalysis(jobId) {
     );
   } catch {
     /* ignore */
+  }
+}
+
+
+/**
+ * Upload one PDF. The backend starts the analysis straight away and
+ * returns the job to follow. The file is sent as the raw request body.
+ */
+export async function uploadPaper(file) {
+  if (!file) {
+    throw new Error("Please choose a PDF file.");
+  }
+
+  if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") {
+    throw new Error("Only PDF files can be uploaded.");
+  }
+
+  if (file.size > 25 * 1024 * 1024) {
+    throw new Error("This file is larger than 25 MB.");
+  }
+
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/jobs/upload`,
+      file,
+      {
+        params: { filename: file.name },
+        headers: { "Content-Type": "application/pdf" },
+        timeout: 120000,
+        maxBodyLength: Infinity
+      }
+    );
+
+    return response.data; // { job_id, title }
+  } catch (error) {
+    throw friendlyError(error);
   }
 }

@@ -688,3 +688,13 @@
 @media (max-width: 900px) {
   .analysis-page { grid-template-columns: 1fr; }
 }
+
+
+/* ---------- upload a paper ---------- */
+.analysis-upload { margin-top: 18px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.analysis-upload-or { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; opacity: .75; }
+.analysis-upload-btn { display: inline-flex; align-items: center; gap: 10px; padding: 12px 22px; border-radius: 12px; border: 1px solid rgba(255,255,255,.35); background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; transition: background .2s, transform .2s, border-color .2s; }
+.analysis-upload-btn:hover:not(:disabled) { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.6); transform: translateY(-1px); }
+.analysis-upload-btn:disabled { opacity: .6; cursor: wait; }
+.analysis-upload-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.analysis-upload small { max-width: 420px; font-size: 13px; opacity: .7; line-height: 1.5; }

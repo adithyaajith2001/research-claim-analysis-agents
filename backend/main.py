@@ -3,13 +3,14 @@ truststore.inject_into_ssl()
 import html
 import json
 import os
+import re
 import sys
 import threading
 import time
 import traceback
 import uuid
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -717,7 +718,7 @@ def _cache_put(query, max_results, result):
 _load_cache()
 
 
-def _run_job(job_id, query, max_results):
+def _run_job(job_id, query, max_results, papers=None):
 
     job = JOBS[job_id]
 
@@ -734,6 +735,7 @@ def _run_job(job_id, query, max_results):
             query=query,
             max_results=max_results,
             progress_callback=progress,
+            papers_override=papers,
         )
 
         job["result"] = build_analysis_response(
@@ -741,7 +743,8 @@ def _run_job(job_id, query, max_results):
             pipeline_output,
             time.perf_counter() - started,
         )
-        _cache_put(query, max_results, job["result"])
+        if papers is None:  # uploaded papers are never shared through the cache
+            _cache_put(query, max_results, job["result"])
         job["stage"] = "done"
         job["percent"] = 100
         job["message"] = "Analysis complete"
@@ -907,6 +910,119 @@ def start_job(
     ).start()
 
     return {"job_id": job_id, "status": "running"}
+
+
+
+# ============================================================
+# UPLOAD A PDF
+# ============================================================
+
+MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+
+
+def _paper_from_pdf(pdf_bytes, filename):
+    """Read an uploaded PDF into the paper shape the pipeline expects."""
+
+    from pdf_processor_v2 import PDFProcessor
+
+    text = PDFProcessor(verify_ssl=True).extract_text(pdf_bytes) or ""
+    text = text.strip()
+
+    if len(text) < 500:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "No readable text was found in this PDF. Scanned pages "
+                "(images of text) are not supported."
+            ),
+        )
+
+    base = os.path.splitext(os.path.basename(filename or "paper"))[0]
+    base = re.sub(r"[_-]+", " ", base).strip() or "Uploaded paper"
+
+    # The title is usually the first reasonable-looking line.
+    title = base
+    for line in text.splitlines()[:12]:
+        line = " ".join(line.split())
+        if 15 <= len(line) <= 200 and not line.lower().startswith(("arxiv", "http", "preprint")):
+            title = line
+            break
+
+    abstract = ""
+    match = re.search(r"abstract[\s:.\-—]*(.{200,2500}?)(?:\n\s*(?:1\.?\s*)?introduction|\Z)", text, re.I | re.S)
+    if match:
+        abstract = " ".join(match.group(1).split())
+    if not abstract:
+        abstract = " ".join(text[:1500].split())
+
+    return {
+        "id": "upload-" + uuid.uuid4().hex[:10],
+        "title": title,
+        "authors": "",
+        "year": None,
+        "source": "Uploaded PDF",
+        "source_url": "",
+        "citation_count": 0,
+        "abstract": abstract,
+        "full_text": text,
+    }
+
+
+@app.post("/api/jobs/upload")
+async def start_upload_job(request: Request, filename: str = "paper.pdf"):
+    """
+    Check the claims of one uploaded PDF. The file is sent as the raw
+    request body (no multipart library is needed) with ?filename=...
+    """
+
+    pdf_bytes = await request.body()
+
+    if not pdf_bytes:
+        raise HTTPException(status_code=400, detail="No file was received.")
+
+    if len(pdf_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="This file is larger than 25 MB.",
+        )
+
+    if not pdf_bytes.startswith(b"%PDF"):
+        raise HTTPException(
+            status_code=415,
+            detail="Only PDF files can be uploaded.",
+        )
+
+    paper = _paper_from_pdf(pdf_bytes, filename)
+    query = f"Uploaded paper: {paper['title']}"
+
+    with JOBS_LOCK:
+        if ACTIVE_JOB["id"] is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="Another analysis is still running. Please wait for it to finish.",
+            )
+
+        job_id = uuid.uuid4().hex
+        JOBS[job_id] = {
+            "job_id": job_id,
+            "query": query,
+            "status": "running",
+            "stage": "starting",
+            "percent": 1,
+            "message": "Reading the uploaded paper",
+            "started_at": time.time(),
+            "finished_at": None,
+            "result": None,
+        }
+        ACTIVE_JOB["id"] = job_id
+
+    threading.Thread(
+        target=_run_job,
+        args=(job_id, query, 1, [paper]),
+        daemon=True,
+    ).start()
+
+    return {"job_id": job_id, "status": "running", "title": paper["title"]}
 
 
 @app.get("/api/jobs/{job_id}")

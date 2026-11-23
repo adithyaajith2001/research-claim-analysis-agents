@@ -1,0 +1,9 @@
+# One question per line. Lines starting with # are ignored.
+# Use questions whose answers you can check in the papers.
+MMLU accuracy of Mistral 7B
+GSM8K accuracy of Mistral 7B
+HellaSwag accuracy of Mistral 7B
+HumanEval score of Llama 2 7B
+MMLU accuracy of Llama 2 13B
+MMLU accuracy of Gemma 2 27B
+MMLU accuracy of Mixtral 8x7B

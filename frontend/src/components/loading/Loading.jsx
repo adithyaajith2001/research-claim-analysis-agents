@@ -105,6 +105,11 @@ const Loading = () => {
     analysisData?.topic ||
     "Research Topic";
 
+  // An uploaded paper is already running on the backend: this page only
+  // follows it. Starting it again would search the web for its title.
+  const uploadJobRef = useRef(location.state?.uploadJobId || null);
+  const isUpload = Boolean(location.state?.uploadJobId);
+
   const startedRef = useRef(false);
   const mountedRef = useRef(true);
   const runIdRef = useRef(0);          // which run is the current one
@@ -160,6 +165,12 @@ const Loading = () => {
   };
 
   const runAnalysis = async (restart, refresh) => {
+    if (isUpload && !uploadJobRef.current) {
+      // A stopped or failed upload cannot be repeated from here.
+      navigate("/analysis");
+      return;
+    }
+
     runIdRef.current += 1;
     const myRun = runIdRef.current;
     const isCurrent = () => myRun === runIdRef.current;
@@ -193,6 +204,7 @@ const Loading = () => {
         refresh,
         {
           restart,
+          existingJobId: uploadJobRef.current,
           onJobId: (id) => {
             jobIdRef.current = id;
             // Stop was pressed while the job was still being created.
@@ -202,6 +214,8 @@ const Loading = () => {
       );
 
       if (!isCurrent()) return;
+
+      uploadJobRef.current = null;
 
       const confidenceScore = Number(result.confidence?.overall_score);
 
@@ -247,6 +261,7 @@ const Loading = () => {
     } catch (error) {
       if (!isCurrent()) return;
 
+      uploadJobRef.current = null; // an upload can only be followed once
       markIdle();
 
       if (error?.cancelled) {
@@ -278,6 +293,7 @@ const Loading = () => {
 
   // Stop the analysis that is running.
   const handleStop = () => {
+    uploadJobRef.current = null;
     runIdRef.current += 1; // ignore anything the stopped run still reports
     stopWantedRef.current = true;
     cancelAnalysis(jobIdRef.current);

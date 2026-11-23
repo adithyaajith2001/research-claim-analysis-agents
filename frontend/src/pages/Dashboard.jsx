@@ -466,18 +466,20 @@ function Dashboard() {
             </div>
 
             <div className="rc-header-actions">
-              <button
-                type="button"
-                className="rc-button"
-                onClick={() =>
-                  navigate("/loading", {
-                    state: { topic: analysisData?.topic, refresh: true }
-                  })
-                }
-                title="Search the papers again instead of showing the saved report"
-              >
-                Run again
-              </button>
+              {!String(topic || "").startsWith("Uploaded paper:") && (
+                <button
+                  type="button"
+                  className="rc-button"
+                  onClick={() =>
+                    navigate("/loading", {
+                      state: { topic: analysisData?.topic, refresh: true }
+                    })
+                  }
+                  title="Search the papers again instead of showing the saved report"
+                >
+                  Run again
+                </button>
+              )}
               <button
                 type="button"
                 className="rc-button"

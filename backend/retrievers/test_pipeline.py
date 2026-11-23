@@ -943,7 +943,13 @@ def run_pipeline(
     query: str = LIVE_QUERY,
     max_results: int = 8,
     progress_callback=None,
+    papers_override=None,
 ):
+    """
+    papers_override: a ready list of paper dicts (for an uploaded PDF).
+    When given, no search is made and every claim in the paper is kept,
+    because there is no question to filter by.
+    """
     pipeline_start = time.perf_counter()
 
     def report(stage, percent, message):
@@ -957,7 +963,10 @@ def run_pipeline(
         except Exception:
             pass  # progress reporting must never break the analysis
 
-    report("retrieval", 3, "Searching arXiv, Semantic Scholar and CrossRef")
+    if papers_override is None:
+        report("retrieval", 3, "Searching arXiv, Semantic Scholar and CrossRef")
+    else:
+        report("retrieval", 3, "Reading the uploaded paper")
 
     # Start this development run with a clean database so
     # contradiction detection only sees the current run.
@@ -997,14 +1006,17 @@ def run_pipeline(
         print("=" * 70)
 
         stage_start = time.perf_counter()
-        papers = (
-            get_papers_from_retrieval(
-                query,
-                max_results=max_results,
+        if papers_override is not None:
+            papers = list(papers_override)
+        else:
+            papers = (
+                get_papers_from_retrieval(
+                    query,
+                    max_results=max_results,
+                )
+                if USE_LIVE_RETRIEVAL
+                else get_test_papers_stub()
             )
-            if USE_LIVE_RETRIEVAL
-            else get_test_papers_stub()
-        )
         print(f"[timing] Retrieval: {time.perf_counter() - stage_start:.2f}s")
         print(
             f"Papers retrieved: {len(papers)}"
@@ -1019,13 +1031,15 @@ def run_pipeline(
         # network-bound, so papers are read at the same time instead of
         # one after another. Nothing here touches the database.
 
-        query_models = extract_query_models(query)
+        # An uploaded paper has no question, so nothing is filtered out.
+        filter_query = "" if papers_override is not None else query
+        query_models = extract_query_models(filter_query)
         from unified_retriever import UnifiedPaperRetriever
         _find_benchmarks = UnifiedPaperRetriever._find_query_benchmark_targets
-        query_benchmark_names = list(_find_benchmarks(query))
+        query_benchmark_names = list(_find_benchmarks(filter_query))
         query_benchmarks = {
             re.sub(r"[^a-z0-9]", "", name.lower())
-            for name in _find_benchmarks(query)
+            for name in _find_benchmarks(filter_query)
         }
         skipped_other_models = 0
         skipped_claims = []
